@@ -79,13 +79,19 @@ API key y cargale saldo. Dejala a mano junto con las de Supabase.
 
 ## Paso 6 · Tu agente
 
-El agente viene con instrucciones de ejemplo. Pedile a Claude **"adaptá el
-agente a mi negocio"**: te va a hacer preguntas (qué vendés, a quién, qué tiene
-que lograr el agente, cuándo pasarle la charla a una persona) y va a reescribir
-las instrucciones en `src/lib/prompts-agentes.ts`.
+Las instrucciones de cada agente se escriben en el CRM, en **Agentes IA**: abrí
+el canal (WhatsApp, Instagram o Messenger) y completá el campo **Instrucciones**.
+Mientras esté vacío, ese agente no contesta.
 
-Después en el CRM, en **Agentes IA**, elegís el modelo, la demora y el horario, y
-prendés el agente de cada canal.
+- Para no arrancar de cero, tocá **Empezar con una plantilla** y completá lo que
+  está entre corchetes.
+- Si querés ayuda, pedile a Claude **"ayudame a escribir las instrucciones de mi
+  agente"**: te va a hacer preguntas (qué vendés, a quién, qué tiene que lograr
+  el agente, cuándo pasarle la charla a una persona) y te va a dar el texto listo
+  para pegar.
+
+En el mismo lugar elegís el modelo, la demora y el horario. Tocá **Guardar** y
+prendé el agente del canal.
 
 ## Paso 7 · Conectar los canales
 

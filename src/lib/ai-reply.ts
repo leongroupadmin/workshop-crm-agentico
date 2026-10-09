@@ -31,7 +31,6 @@ import { INSTRUCCIONES_DE_ADJUNTOS } from "@/lib/media-notes";
 import { moverSiCorresponde } from "@/lib/movimientos-del-agente-server";
 import { completeChatServer, type ChatTurn } from "@/lib/openai-server";
 import { enviarTexto } from "@/lib/mensajeria";
-import { promptDelCanal } from "@/lib/prompts-agentes";
 import { sendHandoffPush } from "@/lib/push-notifications";
 import type { Channel } from "@/types/database";
 
@@ -141,11 +140,9 @@ export async function replyWithAi(input: {
       return;
     }
 
-    // Sin instrucciones no hay agente. El freno es el mismo de siempre —que la
-    // IA no empiece a hablar sola apenas se carga la API key—, sólo que ahora
-    // las instrucciones vienen del código y no de la base: ver
-    // `prompts-agentes.ts`.
-    const systemPrompt = promptDelCanal(input.channel);
+    // Sin instrucciones no hay agente: la IA no empieza a hablar sola apenas se
+    // carga la API key. Las instrucciones se escriben en el panel de Agentes IA.
+    const systemPrompt = (config?.system_prompt ?? "").trim();
     if (!systemPrompt) {
       console.log("[ia] sin instrucciones para el canal", input.channel);
       return;
@@ -368,16 +365,16 @@ async function leTocabaContestar(input: {
 /**
  * La fila de config del canal, con lo que el agente necesita para contestar.
  *
- * Ya no trae las instrucciones: ésas vienen del código (`prompts-agentes.ts`).
- * Lo que queda acá es lo que se configura desde el panel —el interruptor, el
- * modelo, la demora, las herramientas y los embudos—, que sigue siendo de cada
- * workspace.
+ * Todo se configura desde el panel de Agentes IA: las instrucciones, el
+ * interruptor, el modelo, la demora, las herramientas y los embudos.
  */
 type ConfigDelCanal = {
   id: string;
   enabled: boolean | null;
   model_version: string | null;
   tools_config: unknown;
+  /** Las instrucciones del agente. Vacías, no contesta. */
+  system_prompt: string | null;
   reply_delay_seconds?: number | null;
   /** El horario en el que contesta. Ausentes, contesta siempre. */
   dias?: unknown;
@@ -390,7 +387,7 @@ type ConfigDelCanal = {
   aviso_fuera_de_horario?: string | null;
 };
 
-const COLUMNAS_BASE = "id, enabled, model_version, tools_config";
+const COLUMNAS_BASE = "id, enabled, model_version, tools_config, system_prompt";
 const COLUMNAS_DEMORA = "reply_delay_seconds";
 const COLUMNAS_HORARIO = "dias, franjas, horario_excluye, aviso_fuera_de_horario";
 /** Lo mismo, sin el modo: las franjas se leen como cuándo contesta. */

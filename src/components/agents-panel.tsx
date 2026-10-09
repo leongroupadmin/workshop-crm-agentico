@@ -27,7 +27,9 @@ import {
   SYSTEM_PROMPT_WARN_CHARS,
   aproxTokens,
   errorDeDemora,
+  errorDePrompt,
 } from "@/lib/agent-limits";
+import { PLANTILLA_DE_INSTRUCCIONES } from "@/lib/plantilla-de-instrucciones";
 import type { PipelineRow, StageRow } from "@/lib/crm-data";
 import {
   JORNADA,
@@ -62,6 +64,7 @@ const TOOL_LABELS: Record<keyof AgentConfig["tools"], { label: string; hint: str
 
 /** Lo editado y todavía sin guardar de un canal. */
 type Borrador = {
+  prompt: string;
   modelVersion: string;
   tools: AgentConfig["tools"];
   demora: string;
@@ -205,6 +208,7 @@ function AgentForm({
 }) {
   const borrador = borradores.get(agent.channel);
 
+  const [prompt, setPrompt] = useState(borrador?.prompt ?? agent.systemPrompt);
   const [modelVersion, setModelVersion] = useState(borrador?.modelVersion ?? agent.modelVersion);
   const [tools, setTools] = useState(borrador?.tools ?? agent.tools);
   // La demora es texto y no número: un input numérico controlado no deja
@@ -222,9 +226,6 @@ function AgentForm({
   // borrador, que se abre solo: si quedó a medio escribir, esconderlo es la
   // forma más rápida de que se pierda igual.
   const [abierto, setAbierto] = useState(borrador !== undefined);
-  // Las instrucciones van plegadas: son largas y lo que se viene a tocar acá es
-  // el resto. Quien las quiera leer las abre.
-  const [verPrompt, setVerPrompt] = useState(false);
   const [recienGuardado, setRecienGuardado] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -232,8 +233,10 @@ function AgentForm({
   const errorDemora = demora.trim() ? errorDeDemora(segundos) : "Falta la demora.";
   const errorHorario = errorDeHorario(horario);
   const errorAviso = errorDeAviso(aviso);
+  const errorPrompt = errorDePrompt(prompt);
 
   const sinGuardar =
+    prompt.trim() !== agent.systemPrompt.trim() ||
     modelVersion !== agent.modelVersion ||
     tools.handoff_to_human !== agent.tools.handoff_to_human ||
     segundos !== agent.replyDelaySeconds ||
@@ -249,13 +252,13 @@ function AgentForm({
   // aviso de salida.
   useEffect(() => {
     if (sinGuardar) {
-      borradores.set(agent.channel, { modelVersion, tools, demora, horario, aviso });
+      borradores.set(agent.channel, { prompt, modelVersion, tools, demora, horario, aviso });
       sucios.add(agent.channel);
     } else {
       borradores.delete(agent.channel);
       sucios.delete(agent.channel);
     }
-  }, [sinGuardar, agent.channel, modelVersion, tools, demora, horario, aviso]);
+  }, [sinGuardar, agent.channel, prompt, modelVersion, tools, demora, horario, aviso]);
 
   // La confirmación se apaga sola. El timer se limpia al desmontar para no
   // tocar el estado de un componente que ya no está.
@@ -296,6 +299,7 @@ function AgentForm({
     startTransition(async () => {
       const result = await saveAgentConfig({
         channel: agent.channel,
+        systemPrompt: prompt,
         modelVersion,
         tools,
         replyDelaySeconds: segundos,
@@ -313,6 +317,8 @@ function AgentForm({
       // formulario deja de figurar como sin guardar, sin recargar nada.
       onSaved({
         ...agent,
+        // Recortado, igual que lo guarda el servidor.
+        systemPrompt: prompt.trim(),
         modelVersion,
         tools,
         replyDelaySeconds: segundos,
@@ -338,7 +344,13 @@ function AgentForm({
   const errorMovimientos = errorDeLasReglas(movimientos);
 
   const puedeGuardar =
-    sinGuardar && !errorDemora && !errorHorario && !errorAviso && !errorMovimientos && !pending;
+    sinGuardar &&
+    !errorPrompt &&
+    !errorDemora &&
+    !errorHorario &&
+    !errorAviso &&
+    !errorMovimientos &&
+    !pending;
 
   return (
     <Card className="p-4 sm:p-5">
@@ -414,12 +426,7 @@ function AgentForm({
               </p>
             )}
 
-            <Instrucciones
-              channel={agent.channel}
-              texto={agent.systemPrompt}
-              abierto={verPrompt}
-              onToggle={() => setVerPrompt((valor) => !valor)}
-            />
+            <Instrucciones channel={agent.channel} texto={prompt} onChange={setPrompt} />
 
             <DemoraField
               channel={agent.channel}
@@ -602,64 +609,64 @@ function AgentForm({
 }
 
 /**
- * Las instrucciones del agente, para leer y no para editar.
+ * Las instrucciones del agente, escritas acá mismo.
  *
- * Viven en el código (`prompts-agentes.ts`) y llegan acá con el resto de la
- * config. Se muestran igual —plegadas, pero enteras— porque el panel es el
- * único lugar donde alguien puede enterarse de qué le está diciendo el agente a
- * sus clientes; esconderlas deja el "¿por qué contestó esto?" sin respuesta
- * posible desde la app.
+ * Son todo lo que el agente sabe del negocio y de cómo hablar: viajan enteras en
+ * cada respuesta. Vacías, el agente no contesta aunque esté prendido, que es el
+ * freno para que no empiece a hablar solo apenas se carga la API key.
  *
- * El contador se queda aunque ya no haya nada que guardar: lo que mide no es un
- * límite de formulario sino la plata que cuesta cada respuesta, porque el
- * prompt entero viaja en cada una.
+ * El contador mide la plata, no sólo un límite: el prompt entero se paga una vez
+ * por mensaje contestado.
  */
 function Instrucciones({
   channel,
   texto,
-  abierto,
-  onToggle,
+  onChange,
 }: {
   channel: Channel;
   texto: string;
-  abierto: boolean;
-  onToggle: () => void;
+  onChange: (texto: string) => void;
 }) {
-  const cuerpoId = `prompt-${channel}`;
+  const id = `prompt-${channel}`;
 
   return (
     <section>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-medium">Instrucciones</h3>
-        {texto && (
+        <label className="text-sm font-medium" htmlFor={id}>
+          Instrucciones
+        </label>
+        {!texto.trim() && (
           <button
             type="button"
-            onClick={onToggle}
-            aria-expanded={abierto}
-            aria-controls={cuerpoId}
+            onClick={() => onChange(PLANTILLA_DE_INSTRUCCIONES)}
             className="cursor-pointer text-xs font-medium text-amber-700 hover:underline dark:text-amber-300"
           >
-            {abierto ? "Ocultar" : "Ver"}
+            Empezar con una plantilla
           </button>
         )}
       </div>
 
-      {texto ? <PromptCounter length={texto.length} /> : null}
-
-      <p className="mt-1.5 text-xs text-neutral-500">
-        {texto
-          ? "Las define el equipo técnico y viajan con el sistema, así que cada cambio queda registrado. Para ajustarlas, pedilas. Si el agente está diciendo algo que hay que frenar ya, apagalo con el interruptor de arriba."
-          : "Este canal todavía no tiene instrucciones, así que el agente no responde aunque esté prendido."}
+      <p className="mt-1 text-xs leading-5 text-neutral-500">
+        {texto.trim()
+          ? `Es todo lo que el agente de ${CHANNEL_LABELS[channel]} sabe de tu negocio y de cómo tiene que hablar. Si está diciendo algo que hay que frenar ya, apagalo con el interruptor de arriba.`
+          : "Este canal todavía no tiene instrucciones, así que el agente no responde aunque esté prendido. Escribilas acá o empezá con la plantilla y completá lo que está entre corchetes."}
       </p>
 
-      {abierto && texto && (
-        <pre
-          id={cuerpoId}
-          className="mt-2 max-h-96 overflow-auto rounded-xl bg-neutral-50 px-4 py-3 text-xs leading-5 whitespace-pre-wrap text-neutral-600 dark:bg-white/[.04] dark:text-neutral-300"
-        >
-          {texto}
-        </pre>
-      )}
+      <textarea
+        id={id}
+        value={texto}
+        onChange={(event) => onChange(event.target.value)}
+        rows={texto.trim() ? 14 : 4}
+        // El `maxLength` del navegador va bastante arriba del tope real: cortar
+        // el tipeo sin decir nada confunde. Se puede pasar, el contador dice
+        // cuánto sobra y el botón de guardar espera.
+        maxLength={MAX_SYSTEM_PROMPT_CHARS * 2}
+        spellCheck
+        placeholder="Ej: Sos el asistente de [tu negocio]. Tu objetivo es…"
+        className={`${INPUT_CLASS} mt-2 min-h-24 resize-y font-mono text-xs leading-5`}
+      />
+
+      <PromptCounter length={texto.trim().length} />
     </section>
   );
 }

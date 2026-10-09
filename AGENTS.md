@@ -29,16 +29,18 @@ que te cuente o te pase una captura del error antes de seguir.
 - Siempre un proyecto de Supabase **nuevo**, nunca el de otra instalación.
 - Vercel se conecta desde su panel (Import Git Repository); no hace falta su CLI.
 
-## Si te piden adaptar el agente
+## Si te piden ayuda con las instrucciones del agente
 
-Las instrucciones del agente están en `src/lib/prompts-agentes.ts`. Las que
-vienen son un ejemplo armado para León Group: antes de reescribirlas, entrevistá
-a la persona (qué vende, a quién, qué tiene que lograr el agente, qué no puede
-decir nunca, cuándo deriva a una persona, links que puede compartir) y armá las
-suyas respetando la estructura del ejemplo. `pruebas/prompts-agentes.test.mts`
-prueba el texto de León Group (sus precios, su workshop): al reemplazar las
-instrucciones, reemplazá esas pruebas por unas que cuiden lo importante del agente
-nuevo, y corré `npm test`.
+Las instrucciones **no están en el código**: cada persona las escribe en el CRM,
+en **Agentes IA → el canal → Instrucciones**, y se guardan en su base. No hace
+falta tocar archivos ni desplegar.
+
+Para ayudar: entrevistá a la persona de a una pregunta (qué vende, a quién, qué
+tiene que lograr el agente, cómo tiene que hablar, preguntas frecuentes, links
+que puede compartir, cuándo deriva a una persona, qué no puede decir nunca) y
+devolvele el texto completo en un bloque para copiar y pegar en ese campo. Usá
+la estructura de `src/lib/plantilla-de-instrucciones.ts`, que es la misma que
+carga el botón **Empezar con una plantilla**.
 
 ## Al hacer cambios
 

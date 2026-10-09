@@ -28,6 +28,15 @@ export const SYSTEM_PROMPT_WARN_CHARS = 20_000;
 /** Cuentas redondas para mostrarle al usuario cuánto está gastando por mensaje. */
 export const aproxTokens = (chars: number) => Math.round(chars / 4);
 
+/** Por qué no se pueden guardar estas instrucciones, o null si están bien. */
+export function errorDePrompt(texto: string): string | null {
+  const largo = texto.trim().length;
+  if (largo > MAX_SYSTEM_PROMPT_CHARS) {
+    return `Las instrucciones tienen ${largo.toLocaleString("es-AR")} caracteres y el máximo es ${MAX_SYSTEM_PROMPT_CHARS.toLocaleString("es-AR")}.`;
+  }
+  return null;
+}
+
 /**
  * Demora del agente antes de contestar, en segundos.
  *

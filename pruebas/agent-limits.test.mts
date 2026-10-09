@@ -4,9 +4,12 @@ import test from "node:test";
 import {
   DEFAULT_REPLY_DELAY_SECONDS,
   MAX_REPLY_DELAY_SECONDS,
+  MAX_SYSTEM_PROMPT_CHARS,
   MIN_REPLY_DELAY_SECONDS,
   errorDeDemora,
+  errorDePrompt,
 } from "../src/lib/agent-limits.ts";
+import { PLANTILLA_DE_INSTRUCCIONES } from "../src/lib/plantilla-de-instrucciones.ts";
 
 test("la demora por defecto es válida", () => {
   assert.equal(errorDeDemora(DEFAULT_REPLY_DELAY_SECONDS), null);
@@ -42,4 +45,17 @@ test("un negativo se rechaza por el piso y no por el tipo", () => {
   const error = errorDeDemora(-3);
   assert.ok(error);
   assert.match(error, /ráfaga/);
+});
+
+test("las instrucciones se pueden guardar hasta el tope, contando sin los espacios de las puntas", () => {
+  assert.equal(errorDePrompt(""), null);
+  assert.equal(errorDePrompt("x".repeat(MAX_SYSTEM_PROMPT_CHARS)), null);
+  assert.equal(errorDePrompt(`  ${"x".repeat(MAX_SYSTEM_PROMPT_CHARS)}  \n`), null);
+  assert.match(errorDePrompt("x".repeat(MAX_SYSTEM_PROMPT_CHARS + 1)) ?? "", /máximo/);
+});
+
+test("la plantilla entra en el tope y deja a la vista qué completar", () => {
+  assert.equal(errorDePrompt(PLANTILLA_DE_INSTRUCCIONES), null);
+  assert.match(PLANTILLA_DE_INSTRUCCIONES, /\[NOMBRE DEL NEGOCIO\]/);
+  assert.match(PLANTILLA_DE_INSTRUCCIONES, /# CUÁNDO PASÁS LA CHARLA A UNA PERSONA/);
 });

@@ -238,29 +238,20 @@ segundo embudo le desaparecían al operario restringido apenas caían.
 Hay un agente por canal —WhatsApp, Instagram y Messenger— con sus instrucciones,
 su modelo y su demora. Tres recortes deciden cuándo habla y cuándo se calla.
 
-**Las instrucciones viven en el código**, en `src/lib/prompts-agentes.ts`, una
-por canal. Estuvieron en `ai_agent_configs.system_prompt`, editables desde el
-panel, y el problema no era el campo sino que no quedaba historia: quien pisaba
-el textarea se llevaba puesto el texto anterior sin dejar rastro, y el día que
-el agente empezaba a contestar peor no había con qué comparar ni a qué volver.
-Ahora cada cambio es un commit, con fecha, motivo y `git revert`.
+**Las instrucciones se escriben en el panel**, una por canal, y se guardan en
+`ai_agent_configs.system_prompt`. Cada workspace escribe las suyas: el sistema
+no trae ningún prompt de fábrica. Si el campo está vacío, el botón **Empezar
+con una plantilla** carga un esqueleto con lo que hay que completar entre
+corchetes (`src/lib/plantilla-de-instrucciones.ts`).
 
-El costo es que cambiarlas pide un despliegue. Se eligió igual porque lo urgente
-no necesita editar el prompt: el interruptor del canal apaga al agente en el
-acto, y ése es el caso real de emergencia. La columna `system_prompt` sigue en
-la tabla con lo último que se guardó desde el panel viejo —queda como respaldo
-de lo que había el día de la mudanza— y ya no la lee nadie.
+Un canal sin texto es un canal mudo: sin instrucciones no hay agente, para que
+la IA no arranque a hablar sola apenas se carga la API key. Para frenar a un
+agente que está diciendo algo que no corresponde, el interruptor del canal lo
+apaga en el acto.
 
-Un canal sin texto es un canal mudo. Es el mismo freno de siempre —sin
-instrucciones no hay agente, para que la IA no arranque a hablar sola apenas se
-carga la API key— movido de la base al código, así un despliegue no pone a
-contestar a un canal que nunca se configuró.
-
-El panel las muestra en solo lectura, plegadas, con el contador de caracteres y
-los tokens que se pagan en cada respuesta. Se muestran y no se esconden porque
-el panel es el único lugar donde alguien puede enterarse de qué le está diciendo
-el agente a sus clientes: sin eso, el "¿por qué contestó esto?" no tiene
-respuesta posible desde la app.
+Debajo del campo, un contador muestra los caracteres y los tokens que se pagan
+en cada respuesta, porque el prompt entero viaja en cada una. El tope es de
+40.000 caracteres.
 
 **Las marcas del agente.** El agente le habla al CRM con dos palabras sueltas
 dentro de su respuesta, que se sacan del texto antes de enviarlo
@@ -737,8 +728,7 @@ el embudo, la bandeja, los contactos o el resumen, y trae la ficha, la etapa,
 el chat y la agenda de esa persona en un solo panel.
 
 El **panel de agentes de IA** guarda modelo, demora, horario, aviso fuera de
-horario y herramientas por canal en `ai_agent_configs`, y muestra en solo lectura las instrucciones, que vienen del
-código (`src/lib/prompts-agentes.ts`). Desde cualquier chat se puede pedir una
+horario, herramientas e instrucciones por canal en `ai_agent_configs`. Desde cualquier chat se puede pedir una
 respuesta sugerida, que usa esas instrucciones y llega a la caja de texto para
 revisarla antes de enviarla.
 

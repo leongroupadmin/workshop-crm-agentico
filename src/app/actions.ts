@@ -5,7 +5,7 @@ import { after } from "next/server";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { DEFAULT_REPLY_DELAY_SECONDS, errorDeDemora } from "@/lib/agent-limits";
+import { DEFAULT_REPLY_DELAY_SECONDS, errorDeDemora, errorDePrompt } from "@/lib/agent-limits";
 import { MAX_CAPTION, revisarAdjunto } from "@/lib/adjuntos";
 import { webmOpusAOgg } from "@/lib/audio/webm-a-ogg";
 import { DURACION_POR_OMISION_MINUTOS, leerEnlace } from "@/lib/calendar-citas";
@@ -20,7 +20,6 @@ import {
   type ReglaDeMovimiento,
 } from "@/lib/movimientos-del-agente";
 import { clasificar, leerReglas } from "@/lib/movimientos-del-agente-server";
-import { promptDelCanal } from "@/lib/prompts-agentes";
 import { fichaDelLead, HISTORY_LIMIT } from "@/lib/ai-reply";
 import {
   completeChatServer,
@@ -2282,10 +2281,8 @@ export type AgentConfig = {
   /** Interruptor general del canal. Manda sobre el `bot_enabled` de cada lead. */
   enabled: boolean;
   /**
-   * Las instrucciones del canal, para mostrar.
-   *
-   * Vienen del código (`prompts-agentes.ts`) y no de la fila: el panel las
-   * dibuja en solo lectura y no hay forma de guardarlas desde la app.
+   * Las instrucciones del canal. Se escriben en el panel de Agentes IA y se
+   * guardan en `ai_agent_configs.system_prompt`. Vacías, el agente no contesta.
    */
   systemPrompt: string;
   modelVersion: string;
@@ -2353,7 +2350,7 @@ const sanitizeTools = (tools: { handoff_to_human?: boolean }) => ({
   handoff_to_human: tools.handoff_to_human !== false,
 });
 
-const COLUMNAS_SIEMPRE = "id, channel, enabled, tools_config, model_version";
+const COLUMNAS_SIEMPRE = "id, channel, enabled, tools_config, model_version, system_prompt";
 const COLUMNAS_DEMORA = "reply_delay_seconds, pause_on_human_reply";
 const COLUMNAS_HORARIO = "dias, aviso_fuera_de_horario";
 
@@ -2437,6 +2434,7 @@ type FilaDeAgente = {
   enabled?: boolean | null;
   tools_config?: unknown;
   model_version?: string | null;
+  system_prompt?: string | null;
   reply_delay_seconds?: number | null;
   pause_on_human_reply?: boolean | null;
   dias?: unknown;
@@ -2462,7 +2460,7 @@ async function armarAgentes(
       id: row?.id ?? null,
       channel,
       enabled: row?.enabled ?? true,
-      systemPrompt: promptDelCanal(channel),
+      systemPrompt: row?.system_prompt ?? "",
       modelVersion: row?.model_version ?? "gpt-5",
       tools: sanitizeTools((row?.tools_config ?? {}) as { handoff_to_human?: boolean }),
       replyDelaySeconds: row?.reply_delay_seconds ?? DEFAULT_REPLY_DELAY_SECONDS,
@@ -2553,14 +2551,10 @@ async function movimientosDeLosAgentes(scope: {
 
 /**
  * Guarda la config de un canal. `unique (workspace_id, channel)` evita duplicados.
- *
- * No toca `system_prompt`: las instrucciones viven en el código desde
- * `prompts-agentes.ts` y el panel las muestra en solo lectura. La columna queda
- * en la tabla con lo último que se haya guardado desde el panel viejo —sirve
- * como respaldo de lo que había el día de la mudanza— y nadie la lee.
  */
 export async function saveAgentConfig(input: {
   channel: Channel;
+  systemPrompt: string;
   modelVersion: string;
   tools: AgentConfig["tools"];
   replyDelaySeconds: AgentConfig["replyDelaySeconds"];
@@ -2577,6 +2571,9 @@ export async function saveAgentConfig(input: {
   // que puso 0 es por qué el 0 rompe el agrupamiento de la ráfaga.
   const demoraInvalida = errorDeDemora(input.replyDelaySeconds);
   if (demoraInvalida) return { ok: false, error: demoraInvalida };
+
+  const promptInvalido = errorDePrompt(input.systemPrompt);
+  if (promptInvalido) return { ok: false, error: promptInvalido };
 
   const horarioInvalido = errorDeHorario(input.horario);
   if (horarioInvalido) return { ok: false, error: horarioInvalido };
@@ -2612,6 +2609,9 @@ export async function saveAgentConfig(input: {
       {
         workspace_id: scope.workspaceId,
         channel: input.channel,
+        // Recortado: un espacio de más al final no tiene que dejar el panel
+        // "sin guardar" para siempre.
+        system_prompt: input.systemPrompt.trim(),
         model_version: input.modelVersion,
         tools_config: sanitizeTools(input.tools),
         reply_delay_seconds: input.replyDelaySeconds,
@@ -2967,7 +2967,7 @@ export async function suggestReply(input: {
 
   const { data: config } = await scope.supabase
     .from("ai_agent_configs")
-    .select("model_version")
+    .select("model_version, system_prompt")
     .eq("workspace_id", scope.workspaceId)
     .eq("channel", conversation.channel)
     .maybeSingle();
@@ -2988,7 +2988,7 @@ export async function suggestReply(input: {
         // El canal sin instrucciones cargadas igual redacta: pedir una
         // sugerencia es un acto deliberado de alguien del equipo, que la va a
         // leer antes de mandarla. Lo que no puede es salir en blanco.
-        (promptDelCanal(conversation.channel as Channel) ||
+        ((config?.system_prompt ?? "").trim() ||
           "Sos quien atiende a los clientes de esta empresa. Respondé en español rioplatense, breve y cordial.") +
         fichaDelLead(related ?? {}) +
         INSTRUCCIONES_DE_ADJUNTOS,
