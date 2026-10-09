@@ -10,6 +10,8 @@ Es una **versión reducida** del CRM de León Group ([leongroupadmin/CRM](https:
 
 Los mensajes entran por **YCloud** (WhatsApp oficial) y **Zernio** (Instagram, Messenger y WhatsApp), y los **agentes de IA** son los que contestan los chats.
 
+> **Para instalar tu propio CRM seguí [INSTALAR.md](INSTALAR.md)**: es paso a paso y Claude Code te acompaña.
+
 > **Usá un proyecto de Supabase propio para el workshop**, nunca el del CRM de producción: las migraciones de esta versión no traen las tablas de lo que se sacó.
 
 ## Stack
@@ -33,7 +35,7 @@ Los mensajes entran por **YCloud** (WhatsApp oficial) y **Zernio** (Instagram, M
    cp .env.example .env.local
    ```
 
-3. **Crear el esquema** — en el SQL Editor de un proyecto de Supabase **nuevo**, ejecutá **todos** los archivos de `supabase/migrations/`, uno por uno y en orden de nombre (empezando por `202608150001_initial_crm.sql`).
+3. **Crear el esquema** — en el SQL Editor de un proyecto de Supabase **nuevo**, pegá y ejecutá `supabase/instalar.sql`: son todas las migraciones de `supabase/migrations/` juntas y en orden. Si agregás una migración, regeneralo con `npm run sql:instalar`.
 
 4. **Habilitar el acceso con contraseña** — en Supabase, ir a **Authentication → Providers → Email** y dejar prendido *Enable email provider*. El ingreso al CRM es con mail y contraseña; no se manda nada por correo.
 
@@ -761,4 +763,6 @@ servidor).
 npm run dev     # desarrollo
 npm run build   # build de producción
 npm run lint    # eslint
+npm test        # pruebas
+npm run sql:instalar  # rearma supabase/instalar.sql con las migraciones
 ```

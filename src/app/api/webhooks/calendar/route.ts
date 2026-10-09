@@ -11,10 +11,9 @@ import { verifyZernioToken } from "@/lib/zernio";
 // node:crypto y la clave de servicio exigen runtime Node, no Edge.
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Una alta hace hasta cuatro consultas encadenadas, y después del `after` que
-// adelanta la confirmación vienen el barrido y el envío por WhatsApp. La
-// respuesta a n8n no espera nada de eso, pero el trabajo corre en la misma
-// función y necesita margen.
+// Una alta hace hasta cuatro consultas encadenadas, y después viene el aviso
+// push al equipo. La respuesta a n8n no espera el aviso, pero el trabajo corre
+// en la misma función y necesita margen.
 export const maxDuration = 60;
 
 /**
@@ -23,7 +22,7 @@ export const maxDuration = 60;
  * n8n es el puente y se queda con lo que ya hace bien: hablar con Google,
  * distinguir alta de cambio y de baja, y raspar el nombre y el teléfono de la
  * descripción del evento. El CRM se queda con lo suyo: quién es el contacto,
- * cuándo es la cita y qué recordatorios corresponden.
+ * cuándo es la cita y a quién avisarle.
  *
  * Tres cosas de este endpoint que no son obvias:
  *
@@ -33,9 +32,9 @@ export const maxDuration = 60;
  *
  * 2. **Rechaza en vez de guardar a medias.** El teléfono no viene en un campo
  *    del evento sino raspado de la descripción, así que sale vacío más seguido
- *    de lo que parece. Una cita sin teléfono es un recordatorio que no sale
- *    nunca y sin error a la vista; mejor un 422 con el motivo escrito, que se
- *    ve en la ejecución de n8n.
+ *    de lo que parece. Una cita sin teléfono no se puede atar a ningún
+ *    contacto; mejor un 422 con el motivo escrito, que se ve en la ejecución
+ *    de n8n.
  *
  * 3. **Un evento que no es nuestro no es un error.** El disparador de
  *    `eventUpdated` se activa con cualquier cosa del calendario, incluida la

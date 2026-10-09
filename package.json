@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test --experimental-strip-types pruebas/*.test.mts"
+    "test": "node --test --experimental-strip-types pruebas/*.test.mts",
+    "sql:instalar": "node scripts/armar-instalar.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

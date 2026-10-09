@@ -1,7 +1,7 @@
 # Preparar Supabase Cloud
 
 1. Crea un proyecto **nuevo** en Supabase —no uses el del CRM de producción— y copia su URL, anon key y service-role key en un archivo local `.env.local`, usando `.env.example` como guía.
-2. En **SQL Editor**, pega y ejecuta **todos** los archivos de `supabase/migrations/`, uno por uno y en orden de nombre.
+2. En **SQL Editor**, pega y ejecuta `supabase/instalar.sql` entero: son todas las migraciones juntas y en orden.
 3. En **Authentication > Providers > Email**, deja habilitado *Enable email provider*: el ingreso es con mail y contraseña. Opcionalmente, en **Authentication > URL Configuration > Redirect URLs** agrega las URLs de callback (sólo hacen falta si se usa `/auth/callback`):
 
 ```
