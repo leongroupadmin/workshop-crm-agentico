@@ -1,9 +1,5 @@
 import { after, NextResponse, type NextRequest } from "next/server";
 
-import {
-  ejecutarPendientes,
-  programarRecordatoriosDeCitas,
-} from "@/lib/automatizaciones-server";
 import { aplicarEventoDeCalendar } from "@/lib/calendar-citas-server";
 import { sendCitaPush } from "@/lib/push-notifications";
 import { leerEvento } from "@/lib/calendar-citas";
@@ -116,45 +112,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, ignorado: resultado.ignorado });
   }
 
-  // La confirmación sale ahora, no en la próxima vuelta del reloj.
+  // El aviso al equipo va en `after` para que n8n reciba su 200 enseguida.
   //
-  // El motor entero corre por cron cada cinco minutos, y para casi todo está
-  // bien: un aviso de "24 horas antes" no se entera de cinco minutos. Pero la
-  // confirmación al reservar es lo primero que el cliente espera después de
-  // apretar el botón, y llegar seis minutos tarde —un minuto de n8n mirando
-  // Calendar más la vuelta del cron— la convierte en otra cosa.
-  //
-  // Va en `after` para que n8n reciba su 200 enseguida: el barrido y el envío
-  // son varias consultas y una llamada a WhatsApp, y hacerlos antes de
-  // contestar arriesga que el webhook expire y n8n reintente.
-  //
-  // Es el mismo par de funciones que corre el cron, no un atajo paralelo. Lo
-  // que hace seguro llamarlas desde acá es la reserva de `ejecutarPendientes`:
-  // si el cron está corriendo en este mismo instante, una de las dos vueltas se
-  // queda con cada corrida y nadie manda dos veces.
-  if (resultado.accion === "alta" || resultado.accion === "cambio") {
+  // Sólo en el alta: una reserva entra sola, sin que nadie toque nada, y si no
+  // avisa se entera quien mire la Agenda —que puede ser al otro día—. Un cambio
+  // de horario no lo repite: para eso está la Agenda.
+  if (resultado.accion === "alta" && resultado.creada) {
     after(async () => {
       try {
-        const supabase = getSupabaseAdmin();
-
-        // El aviso al equipo va primero y sólo en el alta: una reserva entra
-        // sola, sin que nadie toque nada, y si no avisa se entera quien mire la
-        // Agenda —que puede ser al otro día—. Un cambio de horario no lo
-        // repite: para eso está la Agenda.
-        if (resultado.accion === "alta" && resultado.creada) {
-          await sendCitaPush(supabase, {
-            workspaceId: resultado.workspaceId,
-            appointmentId: resultado.citaId,
-          });
-        }
-
-        await programarRecordatoriosDeCitas(supabase);
-        await ejecutarPendientes(supabase);
+        await sendCitaPush(getSupabaseAdmin(), {
+          workspaceId: resultado.workspaceId,
+          appointmentId: resultado.citaId,
+        });
       } catch (problema) {
-        // No se le devuelve a n8n: la cita ya quedó guardada y el cron levanta
-        // el recordatorio en la próxima vuelta. Marcar el webhook en rojo por
-        // esto haría reintentar un alta que salió bien.
-        console.error("[calendar] no se pudo adelantar el recordatorio:", problema);
+        // No se le devuelve a n8n: la cita ya quedó guardada. Marcar el webhook
+        // en rojo por esto haría reintentar un alta que salió bien.
+        console.error("[calendar] no se pudo avisar de la cita:", problema);
       }
     });
   }

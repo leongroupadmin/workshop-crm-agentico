@@ -96,19 +96,16 @@ async function workspaceUnico(): Promise<WorkspaceUnico> {
 }
 
 /**
- * Suma al usuario al workspace como operario sin permisos.
+ * Suma al usuario al workspace como administrador.
  *
  * Es lo que hace que crear la cuenta en el panel de Supabase alcance: ahí sólo
  * nace la cuenta de acceso, y la membresía —que es lo que de verdad abre el
- * CRM— vive en otra tabla. Sin esto, el alta por Supabase terminaba en la
- * pantalla de "este mail no tiene acceso" y había que volver a tocarla desde
- * Usuarios.
+ * CRM— vive en otra tabla.
  *
- * Entra como operario y con cero permisos a propósito. Si alguna vez se cuela
- * una cuenta que no tenía que estar, lo que ve es un CRM vacío: sin permisos y
- * sin leads asignados, las políticas RLS no le devuelven ni un contacto, ni un
- * chat, ni la configuración de los agentes. Además aparece en Usuarios, que es
- * donde el administrador la saca o le da lo que corresponda.
+ * En esta versión no hay pantalla de Usuarios ni roles para repartir: toda
+ * cuenta que entra ve y puede todo. Por eso es clave dejar apagado el registro
+ * público en Supabase (ver el README): cualquier cuenta del proyecto entra como
+ * administradora.
  *
  * Va con la service role key porque todavía no es miembro, y la política de
  * `workspace_members` sólo deja escribir a los administradores del workspace.
@@ -117,7 +114,7 @@ async function autoAlta(workspaceId: string, userId: string): Promise<void> {
   try {
     await getSupabaseAdmin()
       .from("workspace_members")
-      .insert({ workspace_id: workspaceId, user_id: userId, role: "agent", permissions: {} });
+      .insert({ workspace_id: workspaceId, user_id: userId, role: "admin", permissions: {} });
   } catch {
     // Si falla —por ejemplo, dos pestañas entrando a la vez y una gana la
     // clave primaria—, la lectura siguiente decide. No hay nada que reportar.
@@ -175,10 +172,8 @@ export async function getWorkspaceContext(): Promise<WorkspaceContext> {
 
   let data = await leer();
 
-  // Sin membresía: se la damos y volvemos a leer. Así el alta funciona por los
-  // dos lados —desde Usuarios, que ya la creaba, y desde el panel de Supabase,
-  // que sólo crea la cuenta— sin que el administrador tenga que acordarse de
-  // completar el paso que falta.
+  // Sin membresía: se la damos y volvemos a leer. Así alcanza con crear la
+  // cuenta en el panel de Supabase, sin un segundo paso.
   if (!data?.workspace_id && unico.estado === "ok") {
     await autoAlta(unico.id, user.id);
     data = await leer();

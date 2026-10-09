@@ -1,7 +1,6 @@
 import "server-only";
 
 import { conPlantillas, type ComponenteSaliente } from "@/lib/plantillas";
-import { sendWahaAudio, sendWahaMedia, sendWahaMessage } from "@/lib/waha-api";
 import {
   sendYcloudAudio,
   sendYcloudMedia,
@@ -23,7 +22,7 @@ import { explicarReconciliacion, reconciliarCuentaZernio } from "@/lib/zernio-cu
  * webhook escribe cuando la crea.
  */
 
-export type Proveedor = "zernio" | "ycloud" | "waha";
+export type Proveedor = "zernio" | "ycloud";
 
 export type { SendResult };
 
@@ -35,7 +34,7 @@ export type { SendResult };
  * que no reconocemos es un bug nuestro, no motivo para dejar de responder.
  */
 export function proveedorDe(valor: string | null | undefined): Proveedor {
-  if (valor === "ycloud" || valor === "waha") return valor;
+  if (valor === "ycloud") return valor;
   return "zernio";
 }
 
@@ -64,12 +63,6 @@ export async function enviarTexto(input: Destino & { text: string }): Promise<Se
       return sendYcloudMessage({
         from: input.accountId,
         to: input.conversationId,
-        text: input.text,
-      });
-    case "waha":
-      return sendWahaMessage({
-        accountId: input.accountId,
-        chatId: input.conversationId,
         text: input.text,
       });
   }
@@ -101,14 +94,6 @@ export async function enviarAudio(
         to: input.conversationId,
         audioUrl: input.audioUrl,
       });
-    case "waha":
-      // WAHA no necesita el interruptor: convierte cualquier formato y lo
-      // manda siempre como nota de voz.
-      return sendWahaAudio({
-        accountId: input.accountId,
-        chatId: input.conversationId,
-        audioUrl: input.audioUrl,
-      });
   }
 }
 
@@ -128,7 +113,7 @@ export async function enviarMedia(
   input: Destino & {
     kind: "imagen" | "video";
     url: string;
-    /** El mime del archivo. Lo necesita WAHA para armar el mensaje. */
+    /** El mime del archivo. */
     mimeType: string;
     caption?: string;
   },
@@ -152,15 +137,6 @@ export async function enviarMedia(
         url: input.url,
         caption: input.caption,
       });
-    case "waha":
-      return sendWahaMedia({
-        accountId: input.accountId,
-        chatId: input.conversationId,
-        kind: input.kind,
-        url: input.url,
-        mimeType: input.mimeType,
-        caption: input.caption,
-      });
   }
 }
 
@@ -176,8 +152,8 @@ export async function enviarMedia(
  * no hay forma de que el contacto lo reciba dos veces. Y es sólo uno: si la
  * cuenta nueva también falla, el problema es la key y no el id.
  *
- * Sólo Zernio lo necesita. En YCloud y WAHA la cuenta es el número propio o el
- * nombre de la sesión, y ninguno cambia solo.
+ * Sólo Zernio lo necesita. En YCloud la cuenta es el número propio, y no
+ * cambia solo.
  */
 async function conCuentaAlDia(
   destino: Destino,
@@ -213,8 +189,7 @@ async function conCuentaAlDia(
  * Si el canal admite plantillas aprobadas.
  *
  * Sólo WhatsApp oficial. Quien envía lo pregunta antes para poder resolverlo a
- * su manera: la bandeja no ofrece el botón, y una automatización manda el texto
- * de la plantilla como mensaje común en vez de fallar.
+ * su manera: la bandeja no ofrece el botón.
  */
 export function admitePlantillas(provider: string | null | undefined): boolean {
   return conPlantillas(provider);
@@ -244,10 +219,5 @@ export async function enviarPlantilla(
         idioma: input.idioma,
         components: input.components,
       });
-    case "waha":
-      return {
-        ok: false,
-        error: "Las plantillas oficiales sólo están disponibles en las conversaciones de YCloud.",
-      };
   }
 }

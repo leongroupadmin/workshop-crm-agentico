@@ -15,7 +15,7 @@
 // Ruta relativa y no el alias `@/`: las pruebas corren con el runner de Node,
 // que resuelve el alias para los tipos —los borra al compilar— pero no para lo
 // que se importa de verdad.
-import { normalizarTelefono } from "./difusiones.ts";
+import { normalizarTelefono } from "./telefono.ts";
 
 /** Un contacto leído del archivo, ya limpio. */
 export type FilaImportada = {

@@ -1,7 +1,7 @@
 # Preparar Supabase Cloud
 
-1. Crea un proyecto en Supabase y copia su URL, anon key y service-role key en un archivo local `.env.local`, usando `.env.example` como guía.
-2. En **SQL Editor**, pega y ejecuta `supabase/migrations/202608150001_initial_crm.sql`.
+1. Crea un proyecto **nuevo** en Supabase —no uses el del CRM de producción— y copia su URL, anon key y service-role key en un archivo local `.env.local`, usando `.env.example` como guía.
+2. En **SQL Editor**, pega y ejecuta **todos** los archivos de `supabase/migrations/`, uno por uno y en orden de nombre.
 3. En **Authentication > Providers > Email**, deja habilitado *Enable email provider*: el ingreso es con mail y contraseña. Opcionalmente, en **Authentication > URL Configuration > Redirect URLs** agrega las URLs de callback (sólo hacen falta si se usa `/auth/callback`):
 
 ```
@@ -9,7 +9,7 @@ http://localhost:3000/auth/callback
 https://TU-DOMINIO.vercel.app/auth/callback
 ```
 
-4. Crea la primera cuenta en **Authentication > Users > Add user** (mail, contraseña y *Auto Confirm User* tildado). Es la única que se crea a mano: las demás salen de la sección Usuarios del CRM.
+4. Crea la primera cuenta en **Authentication > Users > Add user** (mail, contraseña y *Auto Confirm User* tildado). Las demás cuentas se crean igual: la primera vez que entran, el CRM las suma como administradoras.
 
 5. Levanta la app (`npm run dev`), entra con esa cuenta y crea el workspace desde la propia interfaz. Ya no hace falta insertarlo a mano por SQL: la ruta `POST /api/workspaces` crea el workspace y la membresía `owner` de forma atómica.
 

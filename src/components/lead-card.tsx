@@ -27,7 +27,7 @@ import {
   initials,
 } from "@/components/ui";
 import type { StageRow } from "@/lib/crm-data";
-import { sePuedeEscribirPrimero } from "@/lib/difusiones";
+import { sePuedeEscribirPrimero } from "@/lib/telefono";
 
 type Tab = "chat" | "datos" | "agenda" | "tareas";
 

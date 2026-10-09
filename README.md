@@ -1,6 +1,16 @@
-# León CRM
+# León CRM — versión workshop
 
 CRM agéntico multicanal (WhatsApp, Instagram y Messenger): los agentes de IA trabajan adentro del CRM, no al costado. Está construido sobre Next.js 16 y Supabase. Sirve para cualquier rubro: el embudo, los agentes y los campos del lead los define cada workspace.
+
+Es una **versión reducida** del CRM de León Group ([leongroupadmin/CRM](https://github.com/leongroupadmin/CRM)), armada para el workshop. Partió de ese repo y vive por separado: lo que cambie acá no toca al original.
+
+| Queda | Se sacó |
+|---|---|
+| Resumen, Conversaciones, Pipeline, Contactos, Agenda, Tareas, Agentes IA, Base de datos (importar y exportar), Configuración, campana y avisos push, asistente | Automatizaciones (incluidos los recordatorios de citas, los seguimientos y el reparto de leads), Difusiones, Usuarios (roles y permisos), WAHA, conversiones de Meta (CAPI) y la landing |
+
+Los mensajes entran por **YCloud** (WhatsApp oficial) y **Zernio** (Instagram, Messenger y WhatsApp), y los **agentes de IA** son los que contestan los chats.
+
+> **Usá un proyecto de Supabase propio para el workshop**, nunca el del CRM de producción: las migraciones de esta versión no traen las tablas de lo que se sacó.
 
 ## Stack
 
@@ -23,7 +33,7 @@ CRM agéntico multicanal (WhatsApp, Instagram y Messenger): los agentes de IA tr
    cp .env.example .env.local
    ```
 
-3. **Crear el esquema** — en el SQL Editor de Supabase, ejecutá `supabase/migrations/202608150001_initial_crm.sql`.
+3. **Crear el esquema** — en el SQL Editor de un proyecto de Supabase **nuevo**, ejecutá **todos** los archivos de `supabase/migrations/`, uno por uno y en orden de nombre (empezando por `202608150001_initial_crm.sql`).
 
 4. **Habilitar el acceso con contraseña** — en Supabase, ir a **Authentication → Providers → Email** y dejar prendido *Enable email provider*. El ingreso al CRM es con mail y contraseña; no se manda nada por correo.
 
@@ -37,14 +47,9 @@ CRM agéntico multicanal (WhatsApp, Instagram y Messenger): los agentes de IA tr
 
    El CRM no tiene registro público, así que la **primera** cuenta se crea a mano una sola vez: en Supabase, **Authentication → Users → Add user**, con mail, contraseña y *Auto Confirm User* tildado.
 
-   Con esa cuenta se entra, se crea el workspace y se queda como administrador. De ahí en más hay **dos formas de dar de alta**, y las dos terminan igual:
+   Con esa cuenta se entra, se crea el workspace y se queda como administrador. Para sumar a alguien más se crea su cuenta igual, en **Authentication → Users** de Supabase, y le pasás el mail y la contraseña. La primera vez que entra, el CRM la suma sola **como administradora**: en esta versión no hay roles ni permisos, todos ven y pueden todo.
 
-   - Desde **Usuarios**, en el CRM: mail, contraseña y rol en un solo paso.
-   - Desde **Authentication → Users** de Supabase: se crea sólo la cuenta, y la primera vez que entra el CRM la suma solo como operario sin permisos.
-
-   En los dos casos le pasás vos el mail y la contraseña a la persona, y después le marcás los permisos en su ficha. Un operario sin permisos entra pero no ve ningún lead.
-
-   > Como cualquier cuenta del proyecto Supabase entra al CRM, dejá **apagado** *Allow new users to sign up* en Supabase (Authentication → Sign In / Providers). Si no, la anon key —que viaja en el navegador— permite que cualquiera se cree una cuenta.
+   > Como cualquier cuenta del proyecto Supabase entra al CRM como administradora, dejá **apagado** *Allow new users to sign up* en Supabase (Authentication → Sign In / Providers). Si no, la anon key —que viaja en el navegador— permite que cualquiera se cree una cuenta.
 
    Hay **un solo workspace** por instalación: todos los usuarios trabajan sobre el mismo CRM. Una vez creado, el servidor rechaza cualquier intento de crear otro.
 
@@ -182,123 +187,6 @@ plantilla y todavía no aparece, esperá ese rato o reiniciá el CRM.
 `GET /api/ycloud/plantillas` —con sesión iniciada— muestra las plantillas como
 las devuelve YCloud y como las leemos nosotros. Es lo que separa "la cuenta no
 tiene ninguna aprobada" de "vienen en un envoltorio que no estamos entendiendo".
-
-## Conectar WAHA (WhatsApp Web, en tu propio servidor)
-
-WAHA es un WhatsApp Web no oficial que corre en tu VPS: el número se vincula
-escaneando un QR, como en el teléfono. No reemplaza a YCloud —sigue siendo una
-sesión de WhatsApp Web, con el riesgo que eso implica— pero no depende de que
-Meta apruebe nada y sirve para números que no están en la API oficial. Convive
-con los otros proveedores: cada conversación recuerda por dónde entró.
-
-### En el servidor
-
-WAHA se instala con Docker en la misma máquina que el CRM. Tres cosas importan:
-
-1. **El puerto.** Next.js usa el 3000 y WAHA también por defecto: publicá el
-   contenedor en otro, por ejemplo el 3001.
-2. **Que no quede abierto a internet.** La API key es lo único que lo protege,
-   así que publicá el puerto sólo en la interfaz local (`127.0.0.1:3001:3000`) y
-   dejá que el CRM lo llame por ahí. No hace falta dominio ni certificado.
-3. **Que la sesión sobreviva.** Montá un volumen para los datos de sesión; si no,
-   cada reinicio del contenedor pide el QR de nuevo.
-
-Los nombres exactos de las variables de WAHA cambian entre versiones —la de la
-API key y la de la URL con la que arma los enlaces a los archivos, que suele ser
-`WAHA_BASE_URL`—, así que confirmalos en la doc de la versión que levantes.
-
-Dos cosas que conviene mirar antes de instalar: **el motor**, porque el mapeo
-está escrito y probado contra los payloads de `WEBJS` (que levanta un Chromium
-adentro del contenedor y pide su gigabyte de RAM), y **si tu versión descarga
-multimedia**, porque en WAHA eso históricamente fue parte de la edición paga. Sin
-descarga de multimedia entran los textos, pero no los audios ni las imágenes.
-
-### En el CRM
-
-```bash
-# La misma dirección por la que el CRM llega al contenedor.
-WAHA_API_BASE_URL=http://127.0.0.1:3001
-WAHA_API_KEY=LA_MISMA_QUE_CARGASTE_EN_EL_CONTENEDOR
-WAHA_SESSION=default
-WAHA_WEBHOOK_SECRET=una-cadena-larga-y-al-azar
-```
-
-Son todas variables de servidor, así que **alcanza con reiniciar el CRM**: no
-hace falta volver a compilar. Sólo las `NEXT_PUBLIC_` se hornean en el build.
-
-### La sesión y su webhook
-
-Al crear la sesión en WAHA, dejale configurado el webhook:
-
-```json
-{
-  "webhooks": [
-    {
-      "url": "https://TU-DOMINIO/api/webhooks/waha",
-      "events": ["message"],
-      "hmac": { "key": "EL_MISMO_WAHA_WEBHOOK_SECRET" }
-    }
-  ]
-}
-```
-
-La URL va por el dominio público aunque las dos cosas estén en la misma máquina:
-adentro del contenedor, `127.0.0.1` es el contenedor y no el CRM. Con
-`host.docker.internal` también se puede, pero en Linux hay que agregarlo a mano.
-
-WAHA firma el cuerpo crudo con HMAC-SHA512 en `X-Webhook-Hmac`. Si tu versión no
-firma, queda la salida de siempre: `…/api/webhooks/waha?token=<WAHA_WEBHOOK_SECRET>`.
-Sin una de las dos pruebas el handler responde 401.
-
-Suscribí sólo `message`. El handler descarta lo demás igual, pero no tiene
-sentido despertarlo por cada cambio de estado.
-
-Después queda escanear el QR desde el panel de WAHA, con el teléfono del número
-que va a atender.
-
-### Los adjuntos
-
-WAHA sirve los archivos detrás de su misma API key, así que el CRM manda
-`X-Api-Key` al bajarlos —es lo que permite transcribir los audios y leer las
-imágenes—, pero sólo cuando la URL del adjunto empieza con `WAHA_API_BASE_URL`.
-Si WAHA arma sus enlaces con otra dirección que la que el CRM tiene configurada,
-el pedido sale sin credenciales y vuelve 401: el mensaje entra igual, lo que se
-pierde es el texto que la IA saca del adjunto. Las dos direcciones tienen que
-coincidir.
-
-El navegador tampoco puede abrir esas URLs: apuntan a la dirección interna de
-WAHA y piden la key. Por eso el chat reproduce los audios a través de
-`/api/adjuntos/<id del mensaje>`, que los baja del lado del servidor, y las fotos
-y los videos pasan por ahí cuando el enlace original no abre. La key sólo se
-manda para lo que está bajo `WAHA_API_BASE_URL/api/files/`.
-
-Y WAHA no los guarda: los borra a los tres minutos (`WHATSAPP_FILES_LIFETIME`,
-180 segundos por defecto). Por eso, apenas entra el mensaje, el CRM se queda con
-una copia de cada audio, foto y video en el bucket **privado**
-`adjuntos-recibidos` de Supabase —se crea solo, como los otros— y el mensaje pasa
-a apuntar a ella. Esa copia también se sirve por `/api/adjuntos/<id>`, que antes
-mira con la sesión de quien pide si puede ver ese chat. Los documentos no se
-copian, y tampoco lo que pese más de 25 MB: quedan con el enlace de WAHA.
-
-No hace falta tocar `WHATSAPP_FILES_LIFETIME`: la copia se hace en el momento.
-Lo que llegó antes de este cambio no se puede recuperar, porque WAHA ya lo borró.
-
-### Qué guarda
-
-La conversación queda con `provider = 'waha'`, el JID de WhatsApp
-(`549…@c.us`) en `zernio_chat_id` y `waha:<sesión>` en `zernio_account_id`. Los
-nombres de las columnas son de Zernio por historia; ver la migración
-`202608250001_waha_provider.sql`.
-
-Se descartan los grupos, los estados y los mensajes propios. Esto último no es
-sólo prolijidad: `message.any` incluye lo que manda uno, y sin ese filtro el
-agente de IA se contestaría a sí mismo.
-
-WhatsApp Web no tiene plantillas —son un mecanismo de la API oficial—, así que
-en estas conversaciones el botón de plantillas no aparece y las automatizaciones
-mandan el texto como mensaje común en vez de fallar.
-
-`GET /api/webhooks/waha` dice qué variables faltan sin exponer sus valores.
 
 ## Embudos
 
@@ -529,318 +417,7 @@ Reactivar sola —a las N horas, o al mover la tarjeta— quedó descartado: dev
 al agente en medio de una negociación que alguien está llevando es peor que
 tener que prenderlo a mano.
 
-## Automatizaciones
-
-Una automatización es un **disparador**, una **espera** y una **secuencia de
-pasos**. Se arman en la sección Automatizaciones, que sólo ve un administrador.
-
-Los tres disparadores:
-
-| Disparador | Cuándo arranca | Condición al ejecutar |
-|---|---|---|
-| Entra en una etapa | La oportunidad cae en la columna elegida | Sigue en esa etapa |
-| Lead nuevo | Se crea el contacto, por chat o a mano | — |
-| Deja de responder | Pasan N horas desde nuestro último mensaje sin que conteste | — |
-
-Hay un cuarto, "se acerca una cita", que no se configura acá sino en la Agenda:
-ver [Recordatorios de citas](#recordatorios-de-citas).
-
-"Deja de responder" es el único que no se engancha a un hecho: es un estado, así
-que se busca en cada vuelta del cron. Sale **una vez por silencio**, y el
-silencio lo define la última vez que habló el contacto, no el último mensaje del
-chat. La diferencia no es sutil: medido contra el último mensaje, el propio
-seguimiento pasaba a ser el último y doce horas después el silencio volvía a dar
-cumplido, así que salía otro, y otro. Un lead frío parado en la columna de
-entrada recibía dos por día hasta que alguien moviera la tarjeta.
-
-El barrido junta los datos con una sola consulta por automatización, la función
-`seguimiento_silencios`. Requiere correr
-`supabase/migrations/202610090001_seguimiento_silencios.sql` en el SQL Editor de
-Supabase. Sin ella el seguimiento sale igual, pero con tres consultas por
-conversación —unas seiscientas por vuelta del cron—, y eso llena los logs del
-plan gratis.
-
-La espera vive en el disparador y no en un primer paso: "a las 24 horas de
-entrar en Nuevo lead" es como se piensa el embudo, y además cambia el
-significado —lo que se mide es el tiempo desde el hecho, no desde que la corrida
-arrancó—. La condición de la etapa es lo que la vuelve útil: si alguien ya
-atendió al lead y lo movió, perseguirlo sería contraproducente.
-
-Los pasos: **esperar**, **enviar una plantilla**, **enviar un texto**, **enviar
-un audio**, **que lo escriba la IA**, **mover de etapa**, **dejar un aviso
-interno** (una nota en el hilo, donde la va a ver quien atienda), **enviar
-conversión a Meta** y **repartir el lead**.
-
-En los textos y en los valores de las plantillas se pueden escribir `{nombre}`,
-`{telefono}`, `{email}` y `{etapa}`. Un hueco que no existe queda escrito tal
-cual, para que se vea antes de prenderla.
-
-### Recordatorios de citas
-
-Se configuran **en la Agenda**, no en Automatizaciones, y sólo los ve un
-administrador. Cada uno es un interruptor, un momento —al agendar, o N tiempo
-antes— y un texto; se agregan y se quitan los que hagan falta, y valen para
-todas las citas de la agenda.
-
-Mientras no haya ninguno **no se manda nada**, y la pantalla ofrece los tres de
-siempre —confirmación al reservar, aviso un día antes y otro una hora antes— con
-un botón. Quedan escritos recién al apretar Guardar: que un deploy empiece a
-mandar WhatsApps por su cuenta sería lo contrario de un sistema que se controla,
-y una pantalla vacía con un botón "Agregar" deja adivinando qué conviene poner.
-Los textos sugeridos a propósito no nombran el plazo —nada de "mañana" ni "en
-una hora"—, porque el plazo es justo lo que se edita al lado y un texto que lo
-repite queda mintiendo en cuanto alguien cambia el número.
-
-Por debajo cada uno es una automatización con disparador "se acerca una cita",
-así que el motor es el mismo. La pantalla es otra por una razón concreta: para
-que un recordatorio entrara en el editor de automatizaciones había que apagarle
-la franja horaria, el corte por respuesta, la IA frenada, el tope diario y la
-condición de etapa, más bloquearle dos pasos. Cuando hay que apagar media
-pantalla para que entre un caso, la pantalla no es la correcta.
-
-"Se acerca una cita" es además el único disparador que mira hacia adelante: los
-otros tres cuentan desde algo que ya pasó, y éste cuenta desde el inicio de la
-cita, que está en el futuro y encima se puede mover.
-
-Suma `{fecha}`, `{hora}`, `{cita}` y `{link}` a los huecos de siempre. La fecha
-y la hora se escriben en la zona del workspace.
-
-Un recordatorio **no juega con las mismas reglas que una secuencia de
-seguimiento**, y conviene saberlo antes de configurarlo: se saltea la franja
-horaria, el corte por respuesta, la IA frenada, el tope diario de mensajes
-automáticos y la condición de etapa. Todos esos cortes existen para no molestar
-a quien no pidió nada; quien reservó una llamada sí pidió, y cada uno de ellos
-lo único que lograría es que el aviso no llegue. El de la etapa además es fatal:
-quien reserva por Calendar entra como contacto y no como oportunidad, así que su
-etapa es nula y *cualquier* etapa exigida cancelaría la corrida en silencio.
-
-Lo que sí lo corta es la cita: si se canceló, si se movió de horario —el aviso
-del horario viejo se descarta y el barrido anota el del nuevo— o si ya empezó.
-Un recordatorio nunca sale tarde: llegar veinte minutos después de la llamada no
-es un recordatorio atrasado, es una molestia.
-
-#### Cuando el envío no sale
-
-Un envío que falla **se reintenta** a los 5, 15 y 45 minutos antes de darse por
-perdido. El modo de fallar más común no es un error de configuración sino un rato
-de nada —WhatsApp Web desconectado, el celular sin señal, la API reiniciándose—,
-y perder un recordatorio por treinta segundos de eso es caro y silencioso.
-
-La corrida vuelve a quedar en **el paso que falló**, no en el siguiente: lo que
-ya salió en esa vuelta no se repite. Sigue en `pendiente` todo el tiempo, así que
-el índice único de "una sola corrida activa" ni se entera.
-
-No se distingue un error pasajero de uno definitivo, a propósito. Al que no tiene
-arreglo lo único que le pasa es que tarda una hora en darse por muerto, y a cambio
-no hay que adivinar qué significa cada mensaje de error de tres proveedores
-distintos. Un recordatorio además tiene su propio freno: si la cita ya empezó se
-cancela en vez de salir, así que un reintento tardío nunca termina en un aviso
-inútil. Cada vuelta del cron informa cuántas quedaron reintentándose.
-
-Sale por **WAHA**, abriendo la conversación si el contacto no tenía ninguna.
-Quien reserva por un formulario nunca escribió por WhatsApp, así que la ventana
-de 24 horas de Meta está cerrada desde el primer día y por el canal oficial sólo
-entraría una plantilla aprobada. Cuando estén aprobadas, esto es lo que hay que
-cambiar.
-
-#### A quién le sale
-
-El contacto de una reserva se busca por teléfono probando **todas las formas en
-que el mismo número puede estar guardado**: con y sin el `+`, y con y sin el 9
-argentino. Son dos diferencias que no significan nada y que una igualdad exacta
-trata como personas distintas —WAHA guarda los dígitos pelados y con el 9 que
-WhatsApp exige, y quien carga un contacto a mano escribe el número como se lo
-dictaron—, así que sin esto habría un contacto duplicado por cada reserva. A un
-número de otro país no se le toca el 9: ahí ese dígito es parte del número.
-
-#### Si está vivo
-
-Arriba de los recordatorios hay una línea que dice si el sistema está
-funcionando, y existe porque **esto no falla con un error: falla callado**. Si
-n8n deja de avisar, las citas no bajan. Si el reloj de las automatizaciones no
-está programado, los avisos no se anotan. En las dos la Agenda se ve idéntica a
-una semana sin reservas, y el primero en notarlo es el cliente que no recibió el
-recordatorio —el momento más caro para enterarse.
-
-La línea tiene tres niveles y sólo el primero es una alarma:
-
-| Se ve | Qué pasó |
-| --- | --- |
-| 🔴 Citas próximas sin ningún aviso anotado | El reloj no está corriendo. Es el único caso sin lectura inocente: una corrida se anota en el primer barrido, con su hora en el futuro, así que una cita vieja sin ninguna significa que el barrido no pasó. |
-| 🟡 Ningún recordatorio prendido | Está todo bien conectado y no se manda nada. |
-| 🟡 Nunca bajó una cita de Calendar | Falta que n8n avise al CRM. |
-| 🟡 Hace más de dos semanas que no baja ninguna | Puede que no haya reservas o que n8n se haya caído. Desde el CRM **no se puede distinguir**, y el cartel no elige: manda a mirar. |
-| ⚪ Funcionando, con las citas próximas y cuándo entró la última | Nada que hacer. |
-
-Que la alarma no mienta depende de mirar **exactamente lo mismo que el barrido**,
-y eso son cuatro recortes: el mismo estado, el mismo horizonte de 90 días, el
-mismo tope de citas y las mismas clases de cita que los recordatorios cubren. Una
-cita a seis meses, o una visita cuando el único recordatorio es de llamadas, no
-lleva corrida *por buenos motivos*; contarla sería acusar al reloj de no haber
-hecho algo que no le toca. El horizonte y el tope viven exportados en
-`automatizaciones-server.ts` justo para que no existan dos copias del número: el
-día que se separen, el cartel empieza a mentir.
-
-A eso se suman dos plazos. A una cita se le dan veinte minutos antes de contarla
-como desatendida —con el cron cada cinco son cuatro vueltas, así que tampoco se
-acusa al reloj de algo que recién le tocaba—, y el silencio se reporta a las dos
-semanas, holgado a propósito: un cartel que se prende por nada se aprende a
-ignorar, y entonces no sirve para el día que sí. Una agenda vacía tampoco es una
-falta: sin citas próximas no hay nada que anotar.
-
-### Repartir el lead
-
-El paso de reparto le pone responsable al lead entre la gente que se elija, y
-cada persona tiene **sus propios días y horas**: el turno es de quien atiende y
-no de la automatización, porque repartir es justamente decidir *quién* según
-*cuándo*. Con una sola ventana para todos haría falta una automatización por
-turno.
-
-Tres formas de repartir:
-
-| Modo | A quién le toca |
-|---|---|
-| Por turno | Al que hace más que no recibe un lead |
-| Por peso | En proporción: con Lucas en 2 y Ana en 1, a Lucas le entran dos por cada uno de Ana |
-| Por carga | Al que menos leads sin archivar tiene ahora, que no es lo mismo que el que menos recibió |
-
-Tres cosas que el reparto no hace:
-
-- **No pisa un responsable ya puesto.** Sólo reparte los leads que no tiene
-  nadie; sobre uno asignado, reasignarlo es sacárselo a quien lo está
-  atendiendo.
-- **No saltea el turno de nadie.** Quien está fuera de sus días u horas no entra
-  en la rotación: sería darle un lead que no va a mirar hasta el lunes.
-- **No deja un lead sin dueño.** Si no hay nadie en turno —un domingo, de
-  madrugada— cae en el dueño del workspace, que es quien puede reasignarlo a
-  mano. Queda registrado como respaldo, así se ve cuándo la rotación no llegó.
-
-El estado de la rotación es la tabla `automation_asignaciones`, un registro de a
-quién le tocó cada lead, y no un contador. Un contador se desincroniza en cuanto
-alguien entra o sale de la lista: el índice apunta a otra persona y la rotación
-salta. Mirando qué pasó, sacar a alguien no rompe nada y cambiarle el peso se
-nota en los leads siguientes. Se leen las últimas 200 asignaciones, para que un
-cambio de peso no quede sepultado bajo meses de reparto viejo.
-
-La franja horaria de la automatización y el corte por respuesta **no se le
-aplican**: no le escribe nada al contacto, así que esperar a las nueve de la
-mañana sólo dejaría el lead sin dueño toda la noche, y cancelar porque contestó
-dejaría sin responsable justo al que más interés mostró. Los días y las horas de
-cada persona se leen en la zona horaria de Configuración, la misma que decide el
-corte del día en el Resumen.
-
-Lo natural es que el reparto sea **su propia automatización** —disparador "lead
-nuevo", sin espera, un solo paso— y no un paso dentro del seguimiento: así el
-lead tiene dueño desde el minuto cero, sin depender de que la secuencia de
-mensajes llegue hasta ahí.
-
-### Parar la IA
-
-El paso "Parar la IA" apaga el mismo interruptor de la ficha (`bot_enabled`):
-desde ahí el agente no le contesta solo a ese contacto, y se reactiva a mano
-desde la ficha o el chat. Sirve después de un mensaje que tiene que parecer de
-una persona —un audio grabado, una propuesta—, para que la respuesta la lea
-alguien del equipo y no el agente.
-
-No le escribe al contacto: si lo que queda de la secuencia es sólo esto (o
-pasos que tampoco escriben, como repartir), no espera la franja horaria. La propia
-secuencia sigue con sus pasos aunque haya una espera en el medio: la IA frenada
-corta los automáticos porque quiere decir que alguien tomó el chat, y acá la
-frenó la misma corrida. Las demás automatizaciones de ese contacto sí se
-cortan, igual que con el interruptor.
-
-### Los frenos
-
-Nada de esto es opcional, y es lo que separa un seguimiento de una molestia.
-
-- **Nace apagada.** Una automatización a medio configurar que arranca sola le
-  escribe a clientes reales, y eso no se deshace.
-- **Se corta si el contacto responde** (configurable, prendido por defecto).
-  Apagarla también cancela lo que quedó en camino.
-- **Franja horaria.** Un paso que cae afuera no se pierde: espera a que abra.
-- **Tope de tres mensajes automáticos por contacto cada 24 horas**, contando
-  todas las automatizaciones juntas. Dos secuencias que se solapan son
-  justamente el caso a frenar.
-- **Respeta la IA frenada.** Si alguien tomó la conversación a mano, la corrida
-  se cancela en vez de pisarle el trabajo. La excepción es la corrida que la
-  frenó con su propio paso "Parar la IA".
-- **La ventana de 24 horas.** Un paso que manda texto libre y cae más tarde no
-  va a poder salir; la pantalla lo avisa mientras se arma. El aviso cuenta
-  también la franja: una espera de 20 horas entra en las 24 sobre el papel y no
-  entra si se cumple de madrugada y tiene que aguantar hasta que abra. Con una
-  franja de 9:00 a 23:30 el techo real es de 14 h 30.
-
-### Los canales
-
-Las automatizaciones no distinguen el canal: la misma secuencia corre sobre
-WhatsApp, Instagram y Messenger, y sale por donde la conversación entró. Dos
-diferencias que sí impone el canal:
-
-- **Las plantillas son de WhatsApp oficial.** En Instagram y en Messenger no
-  existen, así que un paso de plantilla manda el mismo texto ya resuelto como
-  mensaje común —sin botones ni imagen de encabezado— y necesita estar dentro
-  de las 24 horas. Antes fallaba y cortaba la secuencia entera: la automatización
-  servía o no según por dónde hubiera escrito la persona.
-- **La ventana de 24 horas no se puede saltear** fuera de WhatsApp. Donde no hay
-  plantillas, pasado el plazo no hay forma de escribir primero.
-
-Una persona que escribió por dos canales es un solo contacto en el CRM, y la
-corrida guarda por cuál se disparó: el follow-up del silencio de Instagram no
-sale por WhatsApp. Sigue siendo una corrida activa por contacto, no una por
-canal.
-
-### El reloj
-
-El CRM no tiene un proceso vigilando el reloj: cada paso queda anotado en
-`automation_runs` con la hora en que toca, y algo de afuera tiene que despertar a
-mirar.
-
-`POST` o `GET /api/cron/automatizaciones`, autenticado con `CRON_SECRET` en
-`Authorization: Bearer` o en `?token=`. El endpoint no sabe quién lo llama, así
-que el reloj se puede cambiar sin tocar el código.
-
-El reloj vive en **`pg_cron` de Supabase**, del mismo lado que los datos que
-mira. Con el CRM en un VPS el cron del sistema también sirve —es un `curl` cada
-cinco minutos—, pero entonces el reloj depende de que esa máquina esté sana, y
-justo lo que hay que garantizar es que los seguimientos salgan aunque el CRM haya
-estado caído un rato. En Supabase el horario además es un dato: se cambia sin
-tocar el repositorio ni reiniciar nada.
-
-```sql
-create extension if not exists pg_cron;
-create extension if not exists pg_net;
-
-select cron.schedule(
-  'automatizaciones',
-  '*/5 * * * *',
-  $$
-  select net.http_post(
-    url := 'https://TU-DOMINIO/api/cron/automatizaciones',
-    headers := '{"Content-Type":"application/json","Authorization":"Bearer TU_CRON_SECRET"}'::jsonb
-  );
-  $$
-);
-```
-
-`select cron.unschedule('automatizaciones');` lo apaga. El equivalente con el
-cron del VPS es una línea en `crontab -e` contra la misma URL y el mismo secreto:
-el endpoint no distingue quién lo llama.
-
-Lo que se dispara **al instante** al entrar un lead —por mensaje, cargado a mano
-o al mover la tarjeta, sea una persona o el agente— no espera al reloj: se
-atiende en el momento, por el mismo camino que el cron. Es lo que hace que un
-reparto le ponga responsable al lead apenas escribe. Todo lo que tiene una
-espera, y lo que dispara un paso `mover` de otra automatización, sigue
-dependiendo del reloj; si una corrida queda vencida más de 20 minutos sin que
-nadie la atienda, la lista de automatizaciones lo avisa.
-
-Cada vuelta devuelve un balance —`anotadas`, `atendidas`, `enviadas`,
-`canceladas`, `falladas`, más los `difusiones` que salieron— que también queda en
-los logs. El mismo endpoint despacha las difusiones pendientes: es un reloj menos
-que configurar, y olvidarse de configurarlo se vería como una difusión que quedó
-a medio salir.
-
-### Cómo funciona
+## Cómo entra un mensaje de Zernio
 
 | Paso | Qué hace |
 |---|---|
@@ -975,78 +552,15 @@ la pantalla, igual que el resto de los permisos.
 - **Al recibir una tarea de otra persona:** sale en el momento, y además la
   tarea aparece en la campana hasta que se entra a Tareas.
 
-Los avisos a la hora los manda el mismo cron de las automatizaciones
-(`/api/cron/automatizaciones`), así que no hay ningún reloj nuevo que
-configurar. Si el cron corre cada cinco minutos, el aviso puede llegar hasta
+Los avisos a la hora los manda un cron: `GET` o `POST /api/cron/tareas`,
+autenticado con `CRON_SECRET` en `Authorization: Bearer` o en `?token=`. Lo
+puede llamar el cron de Vercel, `pg_cron` de Supabase o cualquier servicio que
+pegue a una URL cada cinco minutos. Si el cron corre cada cinco minutos, el aviso puede llegar hasta
 cinco minutos después. Si el reloj estuvo parado más de seis horas, los avisos
 viejos se descartan en vez de llegar todos juntos.
 
 Cargar una tarea para una hora que ya pasó no manda aviso: se está anotando algo
 atrasado a sabiendas.
-
-## Difusiones
-
-Una difusión es **una plantilla de WhatsApp a muchos contactos de una vez**. La
-sección se ve con el permiso **Mandar difusiones**, que se asigna desde Usuarios
-y que el administrador tiene siempre.
-
-Requiere correr `supabase/migrations/202608210001_difusiones.sql` en el SQL
-Editor de Supabase: es la que crea las tablas y la vista del avance.
-
-La pantalla son tres pasos, uno abajo del otro:
-
-1. **A quién le llega.** Filtros por **etapa del embudo**, **etiquetas** y
-   **fecha de alta** del contacto, más la lista resultante con una casilla por
-   persona para desmarcar a mano. Los contactos sin un teléfono válido se
-   cuentan aparte: no es un problema del filtro sino una ficha incompleta.
-2. **Qué les mandás.** Sólo plantillas en estado `APPROVED`, las mismas que ve
-   el chat. En los huecos se pueden escribir `{nombre}`, `{telefono}`, `{email}`
-   y `{etapa}`: se reemplazan por los datos de cada contacto al enviar. La vista
-   previa se arma con alguien real de la audiencia, porque con los tokens sin
-   reemplazar esconde justo el error que importa.
-3. **Revisar y enviar**, con una confirmación que dice a cuántas personas les va
-   a llegar.
-
-### Cómo sale
-
-La difusión **no se manda dentro de la request**. Escribirle a trescientas
-personas no entra en el tiempo de una llamada y, si se cortara a la mitad, nadie
-sabría por dónde iba. En vez de eso queda una fila por destinatario en
-`broadcast_recipients` y el despachador las va mandando **de a una**: una ráfaga
-es exactamente lo que Meta mira para bajarle la calificación al número.
-
-El envío arranca apenas se crea la difusión y lo continúa el mismo cron de las
-automatizaciones, que ahora también despacha lo que haya pendiente. No hay un
-reloj nuevo que configurar.
-
-Cada fila sabe cómo terminó, y el historial muestra el avance —enviados, en
-cola, fallados— actualizándose solo mientras queda algo por salir. Al tocar una
-difusión se ve uno por uno quién la recibió y, si alguien no, con qué error.
-
-### A quién se le puede escribir
-
-A cualquier contacto con teléfono, no sólo a los que ya escribieron: la mitad de
-la base son fichas cargadas a mano, y dejarlas afuera vaciaba la función.
-
-El número propio desde el que sale se toma de las conversaciones de WhatsApp que
-ya existen, que es donde YCloud lo dejó escrito; `YCLOUD_PHONE_NUMBER` cubre el
-caso en que todavía no entró ningún mensaje. Si no hay ninguno de los dos, cada
-destinatario queda marcado con ese motivo en vez de fallar en silencio.
-
-Al contacto que nunca escribió se le abre la conversación con el mismo formato
-que usaría el webhook, así el mensaje queda en el historial y, cuando conteste,
-la respuesta cae en ese mismo chat en vez de abrir uno nuevo.
-
-### Los frenos
-
-- **Tope de 1000 destinatarios por difusión.** No es un límite de la API: es una
-  barandilla contra el filtro mal armado que agarra la base entera.
-- **Nadie recibe dos veces la misma difusión**, ni siquiera si el reloj se
-  superpone con el envío inicial: la fila se reserva antes de llamar a la API.
-- **La plantilla se relee en el servidor.** Del navegador viajan el nombre, el
-  idioma y los valores, nunca el texto armado.
-- **Los contactos se releen con la sesión de quien envía.** RLS decide a quién
-  puede ver, y los archivados quedan afuera aunque vengan en la lista.
 
 ## Resumen
 
@@ -1206,10 +720,7 @@ que el CRM ya tenía: llena los huecos y suma las etiquetas nuevas. El CRM es
 donde alguien atendió a esa persona y corrigió su nombre; una planilla vieja no
 tiene por qué ganarle a eso.
 
-Dos límites a propósito: 2000 contactos por archivo, y **los importados no
-disparan automatizaciones**. Una importación de cientos de filas con una
-automatización de "lead nuevo" prendida sería una ráfaga de mensajes a gente que
-nunca escribió, y eso no se deshace.
+Un límite a propósito: 2000 contactos por archivo.
 
 ## Estado actual
 

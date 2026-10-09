@@ -2,58 +2,31 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { normalizarTelefono, sePuedeEscribirPrimero } from "@/lib/difusiones";
+import { normalizarTelefono, sePuedeEscribirPrimero } from "@/lib/telefono";
 import { proveedorDe, type Proveedor } from "@/lib/mensajeria";
 
 /**
  * Cómo nace una conversación de WhatsApp cuando no la abre el webhook.
  *
- * Lo normal es que el chat lo cree el primer mensaje entrante. Pero hay dos
- * casos donde el primero en escribir somos nosotros —una difusión y el botón
- * de "escribir" de la bandeja— y los dos necesitan exactamente la conversación
- * que armaría el webhook: mismo proveedor, misma cuenta y el mismo id de chat.
- * Vive acá y no en cada uno para que no se separen: si una copia guardara el
- * chat con otro formato, la charla aparecería partida en dos apenas la persona
- * conteste.
+ * Lo normal es que el chat lo cree el primer mensaje entrante. Pero cuando el
+ * primero en escribir somos nosotros —el botón de "escribir" de la bandeja— hace
+ * falta exactamente la conversación que armaría el webhook: mismo proveedor,
+ * misma cuenta y el mismo id de chat. Si se guardara con otro formato, la charla
+ * aparecería partida en dos apenas la persona conteste.
  */
 
 type Supabase = SupabaseClient;
 
 /** Por dónde sale un chat que arrancamos nosotros. */
 export type Salida =
-  | { ok: true; provider: Extract<Proveedor, "ycloud" | "waha">; accountId: string }
+  | { ok: true; provider: Extract<Proveedor, "ycloud">; accountId: string }
   | { ok: false; error: string };
-
-/**
- * El número propio de YCloud. Sólo para difusiones, que son de WhatsApp oficial.
- *
- * Sale de las conversaciones que ya existen, que es donde YCloud lo dejó
- * escrito. `YCLOUD_PHONE_NUMBER` está para el caso en que todavía no entró
- * ningún mensaje.
- */
-export async function numeroPropio(supabase: Supabase, workspaceId: string): Promise<string | null> {
-  const configurado = (process.env.YCLOUD_PHONE_NUMBER ?? "").trim();
-  if (configurado) return configurado;
-
-  const { data } = await supabase
-    .from("conversations")
-    .select("zernio_account_id")
-    .eq("workspace_id", workspaceId)
-    .eq("provider", "ycloud")
-    .not("zernio_account_id", "is", null)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const numero = (data?.zernio_account_id as string | null) ?? null;
-  return numero && numero.trim() ? numero.trim() : null;
-}
 
 /**
  * Por dónde escribirle primero a alguien en este workspace.
  *
  * Se mira la conversación de WhatsApp más reciente y se sale por donde salen
- * las demás: el CRM puede tener los tres proveedores conectados a la vez, y
+ * las demás: el CRM puede tener los dos proveedores conectados a la vez, y
  * arrancar una charla por uno distinto del que usa el equipo dejaría un chat
  * que después nadie puede contestar.
  *
@@ -94,11 +67,6 @@ export async function salidaParaEscribirPrimero(
   const ycloud = (process.env.YCLOUD_PHONE_NUMBER ?? "").trim();
   if (ycloud) return { ok: true, provider: "ycloud", accountId: ycloud };
 
-  if ((process.env.WAHA_API_BASE_URL ?? "").trim()) {
-    const sesion = (process.env.WAHA_SESSION ?? "").trim() || "default";
-    return { ok: true, provider: "waha", accountId: `waha:${sesion}` };
-  }
-
   if (huboZernio) {
     return {
       ok: false,
@@ -128,12 +96,6 @@ export function chatIdDelContacto(
   // separaran, la bandeja volvería a listar contactos cuyo chat no se puede
   // abrir.
   if (!sePuedeEscribirPrimero(telefono)) return null;
-
-  if (salida.provider === "waha") {
-    // WAHA nombra el chat con el JID de WhatsApp: los dígitos y `@c.us`.
-    const digitos = normalizarTelefono(telefono, "solo-digitos");
-    return digitos ? `${digitos}@c.us` : null;
-  }
 
   // En YCloud la conversación es el par de números, y el del contacto va en el
   // mismo formato que el nuestro —con o sin `+`— tal como lo escribe YCloud.

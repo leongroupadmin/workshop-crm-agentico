@@ -22,7 +22,6 @@ import {
   updateAppointmentStatus,
 } from "@/app/actions";
 import { useAccess } from "@/components/access";
-import { RecordatoriosDeCitas } from "@/components/recordatorios-citas";
 import {
   Card,
   EmptyState,
@@ -169,11 +168,6 @@ export function AgendaPanel({
           </button>
         </div>
       )}
-
-      {/* Los recordatorios se configuran acá y no en Automatizaciones: es donde
-          se los busca, y es la única pantalla en la que todas las opciones que
-          se ven le aplican. Sólo la ve un administrador. */}
-      <RecordatoriosDeCitas onNotice={onNotice} />
 
       {/* Los filtros van arriba de todo y a la vista, no adentro de un popup:
           en la agenda la primera pregunta es por una fecha —"qué tengo el
@@ -407,9 +401,9 @@ function AppointmentItem({
       </span>
 
       <span className="flex items-center gap-1 md:contents">
-        {/* La conversación de una cita es la que abrió su propio recordatorio, y
-            es donde cae la respuesta del cliente: el "no voy a poder" llega ahí y
-            hay que poder saltar de la cita al chat sin buscar el nombre a mano. */}
+        {/* La conversación del contacto es donde cae la respuesta del cliente:
+            el "no voy a poder" llega ahí y hay que poder saltar de la cita al
+            chat sin buscar el nombre a mano. */}
         <button
           type="button"
           onClick={() => onOpenLead(appointment.contactId)}
@@ -420,8 +414,7 @@ function AppointmentItem({
           <span className="sr-only">Abrir el chat</span>
         </button>
 
-        {/* El enlace de la cita, que es el que sale en el {link} del
-            recordatorio. En una de Calendar es de sólo lectura —lo manda la
+        {/* El enlace de la reunión. En una de Calendar es de sólo lectura —lo manda la
             sincronización—; en una cargada a mano se edita acá, porque la sala de
             Meet casi nunca existe todavía cuando se agenda. */}
         {puedeEditarEnlace ? (
@@ -524,8 +517,7 @@ function AppointmentItem({
       {confirmando && (
         <Modal title="Borrar la cita" onClose={() => setConfirmando(false)}>
           <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-300">
-            Se va <strong>{appointment.title}</strong> con {appointment.contactName}, y con ella
-            los recordatorios que todavía no salieron.
+            Se va <strong>{appointment.title}</strong> con {appointment.contactName}.
           </p>
           <div className="mt-5 flex justify-end gap-2">
             <button
@@ -554,7 +546,7 @@ function AppointmentItem({
  * El enlace de una cita ya agendada.
  *
  * Vacío borra el que hubiera: una reunión que pasó a ser presencial no tiene
- * que seguir mandando un Meet muerto en el recordatorio.
+ * que seguir mostrando un Meet muerto.
  */
 function EnlaceModal({
   appointment,
@@ -583,9 +575,8 @@ function EnlaceModal({
     <Modal title="Enlace de la cita" onClose={close}>
       <form onSubmit={save}>
         <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-300">
-          Es el que sale en el hueco <code className="font-mono">{"{link}"}</code> de los
-          recordatorios de <strong>{appointment.title}</strong>. Vacío, el recordatorio sale sin
-          enlace.
+          El enlace de la reunión de <strong>{appointment.title}</strong> (Meet, Zoom…). Vacío,
+          la cita queda sin enlace.
         </p>
 
         <label className="mt-4 block text-sm font-medium" htmlFor="appointment-link-edit">
@@ -718,9 +709,8 @@ function AppointmentModal({
           className={`${INPUT_CLASS} mt-2`}
         />
 
-        {/* El que sale en el {link} de los recordatorios. Una cita cargada acá
-            no baja de Calendar, así que si no se pega nada el hueco queda sin
-            dato y el recordatorio sale sin enlace. */}
+        {/* Una cita cargada acá no baja de Calendar, así que el enlace de la
+            reunión se pega a mano. */}
         <label className="mt-4 block text-sm font-medium" htmlFor="appointment-link">
           Enlace <span className="font-normal text-neutral-500">(opcional)</span>
         </label>
@@ -734,8 +724,7 @@ function AppointmentModal({
           className={`${INPUT_CLASS} mt-2`}
         />
         <p className="mt-1.5 text-xs text-neutral-500">
-          Es el que sale en el hueco <code className="font-mono">{"{link}"}</code> de los
-          recordatorios. Se puede cargar después.
+          El enlace de la reunión (Meet, Zoom…). Se puede cargar después.
         </p>
 
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}

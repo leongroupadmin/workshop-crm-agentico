@@ -4,9 +4,6 @@ import {
   Check,
   Clock,
   KeyRound,
-  Megaphone,
-  MessageCircle,
-  RefreshCw,
   Sparkles,
   TriangleAlert,
 } from "lucide-react";
@@ -15,19 +12,12 @@ import { useEffect, useState, useTransition } from "react";
 import {
   loadAssistantConfig,
   loadChatModels,
-  loadMetaConfig,
-  loadWhatsappStatus,
   saveAssistantConfig,
-  saveMetaConfig,
   updateWorkspaceTimezone,
-  type EstadoDeWhatsapp,
-  type MetaConfigVista,
-  type MetaConversionFila,
 } from "@/app/actions";
 import { useAccess } from "@/components/access";
-import { Card, INPUT_CLASS, PRIMARY_BUTTON_CLASS } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { TIMEZONE_OPTIONS, longDateInZone } from "@/lib/fechas";
-import { esEventoMeta, MONEDAS_META, NOMBRE_DEL_EVENTO } from "@/lib/meta-eventos";
 
 /**
  * Configuración del workspace.
@@ -103,13 +93,9 @@ export function SettingsPanel({ timezone }: { timezone: string }) {
         )}
       </Card>
 
-      <WhatsappCard />
-
       <TimezoneCard timezone={timezone} />
 
       <AsistenteCard />
-
-      <MetaCard />
 
       <Card className="p-5 sm:p-6">
         <h2 className="font-semibold">Cómo funciona la IA</h2>
@@ -275,218 +261,6 @@ function AsistenteCard() {
 }
 
 /**
- * La cuenta de Meta a la que las automatizaciones le avisan las conversiones.
- *
- * Es del workspace porque cada workspace es un cliente con su propia cuenta
- * publicitaria. El token no vuelve nunca a la pantalla: se muestran sus
- * últimos cuatro caracteres para reconocerlo, y dejar el campo vacío conserva
- * el que estaba.
- */
-function MetaCard() {
-  const access = useAccess();
-  const [cargado, setCargado] = useState(false);
-  const [guardada, setGuardada] = useState<MetaConfigVista | null>(null);
-  const [conversiones, setConversiones] = useState<MetaConversionFila[]>([]);
-  const [datasetId, setDatasetId] = useState("");
-  const [token, setToken] = useState("");
-  const [currency, setCurrency] = useState<string>("USD");
-  const [testEventCode, setTestEventCode] = useState("");
-  const [notice, setNotice] = useState<{ ok: boolean; message: string } | null>(null);
-  const [saving, startSaving] = useTransition();
-
-  const aplicar = (config: MetaConfigVista | null) => {
-    setGuardada(config);
-    setDatasetId(config?.datasetId ?? "");
-    setCurrency(config?.currency ?? "USD");
-    setTestEventCode(config?.testEventCode ?? "");
-    setToken("");
-  };
-
-  useEffect(() => {
-    if (!access.isAdmin) return;
-    let active = true;
-    loadMetaConfig().then((result) => {
-      if (!active) return;
-      setCargado(true);
-      if (!result.ok) {
-        setNotice({ ok: false, message: result.error });
-        return;
-      }
-      aplicar(result.config);
-      setConversiones(result.conversiones);
-    });
-    return () => {
-      active = false;
-    };
-  }, [access.isAdmin]);
-
-  if (!access.isAdmin) return null;
-
-  const guardar = () => {
-    setNotice(null);
-    startSaving(async () => {
-      const result = await saveMetaConfig({ datasetId, accessToken: token, currency, testEventCode });
-      if (!result.ok) {
-        setNotice({ ok: false, message: result.error });
-        return;
-      }
-      const recargado = await loadMetaConfig();
-      if (recargado.ok) {
-        aplicar(recargado.config);
-        setConversiones(recargado.conversiones);
-      }
-      setNotice({ ok: true, message: "Cuenta de Meta guardada. Meta aceptó el token." });
-    });
-  };
-
-  return (
-    <Card className="p-5 sm:p-6">
-      <div className="flex items-center gap-3">
-        <span className="grid size-10 place-items-center rounded-xl bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
-          <Megaphone className="size-5" />
-        </span>
-        <div className="min-w-0">
-          <h2 className="font-semibold">Conversiones de Meta</h2>
-          <p className="text-sm text-neutral-500">
-            {guardada
-              ? `Conectado al dataset ${guardada.datasetId}.`
-              : "Avisale a Meta cuando un lead de un anuncio llega a una columna del embudo."}
-          </p>
-        </div>
-      </div>
-
-      {cargado && (
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <label className="block text-sm font-medium">
-            ID del dataset
-            <input
-              value={datasetId}
-              onChange={(event) => setDatasetId(event.target.value.trim())}
-              inputMode="numeric"
-              placeholder="1425517971935121"
-              className={`${INPUT_CLASS} mt-2`}
-            />
-          </label>
-
-          <label className="block text-sm font-medium">
-            Token de acceso
-            <input
-              type="password"
-              value={token}
-              onChange={(event) => setToken(event.target.value)}
-              autoComplete="off"
-              placeholder={
-                guardada?.tokenTermina ? `Guardado, termina en …${guardada.tokenTermina}` : "EAAG…"
-              }
-              className={`${INPUT_CLASS} mt-2`}
-            />
-          </label>
-
-          <label className="block text-sm font-medium">
-            Moneda del valor
-            <select
-              value={currency}
-              onChange={(event) => setCurrency(event.target.value)}
-              className={`${INPUT_CLASS} mt-2 cursor-pointer`}
-            >
-              {MONEDAS_META.map((moneda) => (
-                <option key={moneda} value={moneda}>
-                  {moneda}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block text-sm font-medium">
-            Código de prueba <span className="font-normal text-neutral-500">(opcional)</span>
-            <input
-              value={testEventCode}
-              onChange={(event) => setTestEventCode(event.target.value.trim())}
-              placeholder="TEST12345"
-              className={`${INPUT_CLASS} mt-2`}
-            />
-          </label>
-        </div>
-      )}
-
-      {cargado && (
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={guardar}
-            disabled={saving || !datasetId || (!token && !guardada)}
-            className={PRIMARY_BUTTON_CLASS}
-          >
-            {saving ? "Comprobando con Meta…" : "Guardar"}
-          </button>
-        </div>
-      )}
-
-      <ul className="mt-4 space-y-1.5 text-sm text-neutral-500">
-        <li>
-          El token se genera en el Administrador de eventos: dataset → Configuración → API de
-          conversiones → Generar token de acceso.
-        </li>
-        <li>
-          Con el código de prueba cargado, los eventos aparecen en &ldquo;Probar eventos&rdquo; y no
-          cuentan en las campañas. Borralo cuando termines de probar.
-        </li>
-        <li>
-          Para mandar conversiones, armá una automatización &ldquo;Entra en una etapa&rdquo; con el
-          paso &ldquo;Enviar conversión a Meta&rdquo;.
-        </li>
-      </ul>
-
-      {notice && (
-        <p
-          className={`mt-3 text-sm ${
-            notice.ok ? "text-amber-700 dark:text-amber-400" : "text-red-600 dark:text-red-400"
-          }`}
-        >
-          {notice.message}
-        </p>
-      )}
-
-      {conversiones.length > 0 && (
-        <div className="mt-5 border-t border-[#ddd8c9] pt-4 dark:border-white/10">
-          <h3 className="text-sm font-medium">Últimas conversiones</h3>
-          <ul className="mt-2 divide-y divide-neutral-100 text-sm dark:divide-white/5">
-            {conversiones.map((fila) => (
-              <li key={fila.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-2">
-                <span className="font-medium">{fila.contacto}</span>
-                <span className="text-neutral-500">
-                  {esEventoMeta(fila.evento) ? NOMBRE_DEL_EVENTO[fila.evento] : fila.evento}
-                  {fila.valor !== null && ` · ${fila.valor.toLocaleString("es-AR")}`}
-                </span>
-                <span
-                  className={`ml-auto text-xs ${
-                    fila.estado === "enviada"
-                      ? "text-amber-700 dark:text-amber-400"
-                      : fila.estado === "fallada"
-                        ? "text-red-600 dark:text-red-400"
-                        : "text-neutral-500"
-                  }`}
-                  title={fila.detalle ?? undefined}
-                >
-                  {fila.estado === "enviada" && "Enviada"}
-                  {fila.estado === "fallada" && "Falló"}
-                  {fila.estado === "sin_anuncio" && "No vino de un anuncio"}
-                </span>
-                {fila.estado === "fallada" && fila.detalle && (
-                  <span className="w-full text-xs text-red-600/80 dark:text-red-400/80">
-                    {fila.detalle}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </Card>
-  );
-}
-
-/**
  * Zona horaria del workspace.
  *
  * El resumen arma los días con esta zona y no con el reloj del servidor, que
@@ -573,115 +347,6 @@ function TimezoneCard({ timezone }: { timezone: string }) {
           }`}
         >
           {notice.message}
-        </p>
-      )}
-    </Card>
-  );
-}
-
-const ESTILO_DE_LA_SESION: Record<
-  EstadoDeWhatsapp["diagnostico"]["nivel"],
-  { icono: string; texto: string }
-> = {
-  ok: {
-    icono: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
-    texto: "text-neutral-500",
-  },
-  aviso: {
-    icono: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
-    texto: "text-amber-700 dark:text-amber-400",
-  },
-  alarma: {
-    icono: "bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400",
-    texto: "text-red-600 dark:text-red-400",
-  },
-};
-
-/**
- * El estado del WhatsApp que manda los recordatorios.
- *
- * El QR está acá y no sólo en el panel de WAHA por una razón práctica: cuando
- * la sesión se cae —el teléfono sin batería, alguien que la cierra desde el
- * celular— quien lo nota es quien usa el CRM, y no tiene por qué tener acceso
- * al servidor para volver a vincular.
- */
-function WhatsappCard() {
-  const access = useAccess();
-  const [estado, setEstado] = useState<EstadoDeWhatsapp | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [revisando, startRevisar] = useTransition();
-
-  const revisar = () => {
-    startRevisar(async () => {
-      const resultado = await loadWhatsappStatus();
-      if (resultado.ok) {
-        setEstado(resultado.estado);
-        setError(null);
-      } else {
-        setEstado(null);
-        setError(resultado.error);
-      }
-    });
-  };
-
-  useEffect(() => {
-    if (access.isAdmin) revisar();
-    // Una sola vez al abrir Ajustes: el resto lo pide el botón.
-  }, [access.isAdmin]);
-
-  if (!access.isAdmin) return null;
-
-  const estilo = ESTILO_DE_LA_SESION[estado?.diagnostico.nivel ?? "aviso"];
-
-  return (
-    <Card className="p-5 sm:p-6">
-      <div className="flex items-start gap-3">
-        <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${estilo.icono}`}>
-          <MessageCircle className="size-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="font-semibold">
-            {estado?.diagnostico.titulo ?? (error ? "No se pudo consultar" : "WhatsApp")}
-          </h2>
-          <p className={`text-sm ${error ? "text-red-600 dark:text-red-400" : estilo.texto}`}>
-            {error ??
-              estado?.diagnostico.mensaje ??
-              (revisando ? "Consultando a WhatsApp…" : "Sin datos todavía.")}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={revisar}
-          disabled={revisando}
-          className="shrink-0 rounded-lg p-2 text-neutral-500 transition hover:bg-black/[0.04] disabled:opacity-40 dark:hover:bg-white/5"
-          title="Volver a consultar"
-        >
-          <RefreshCw className={`size-4 ${revisando ? "animate-spin" : ""}`} />
-        </button>
-      </div>
-
-      {estado?.qr && (
-        <div className="mt-5 flex flex-col items-center gap-3 rounded-xl bg-black/[0.03] p-5 dark:bg-white/5">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={estado.qr}
-            alt="Código QR para vincular WhatsApp"
-            className="size-56 rounded-lg bg-white p-2"
-          />
-          <p className="max-w-xs text-center text-sm text-neutral-500">
-            En el teléfono: WhatsApp → Dispositivos vinculados → Vincular un dispositivo.
-          </p>
-          <p className="text-center text-xs text-neutral-400">
-            El código vence en unos segundos. Si no llegás a tiempo, actualizá con el botón de
-            arriba.
-          </p>
-        </div>
-      )}
-
-      {estado?.diagnostico.pideQr && !estado.qr && (
-        <p className="mt-4 text-sm text-neutral-500">
-          WAHA no entregó el código. Probá con el botón de actualizar, o vinculá desde el panel de
-          WAHA.
         </p>
       )}
     </Card>

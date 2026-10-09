@@ -38,12 +38,11 @@ export type Permission =
   | "gestionar_agenda"
   | "asignar_tareas"
   | "ver_tareas_del_equipo"
-  | "gestionar_agentes"
-  | "mandar_difusiones";
+  | "gestionar_agentes";
 
 export type PermissionMap = Partial<Record<Permission, boolean>>;
 
-/** Cómo se agrupan en la pantalla de Usuarios. */
+/** Cómo se agrupan los permisos. */
 export type PermissionGroup = "Leads" | "Trabajo diario" | "Configuración";
 
 export const PERMISSIONS: {
@@ -117,12 +116,6 @@ export const PERMISSIONS: {
     group: "Configuración",
     label: "Configurar los agentes IA",
     hint: "Cambiar las instrucciones y prender o apagar la IA de cada canal.",
-  },
-  {
-    key: "mandar_difusiones",
-    group: "Configuración",
-    label: "Mandar difusiones",
-    hint: "Escribirle a muchos contactos de una con una plantilla de WhatsApp. Una difusión no se puede deshacer.",
   },
 ];
 

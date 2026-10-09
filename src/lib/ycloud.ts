@@ -5,8 +5,6 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 import type { MensajeEntrante } from "@/lib/entrante";
 
-import { leerReferral } from "./meta-capi.ts";
-
 /**
  * Contrato de los webhooks de YCloud.
  *
@@ -63,12 +61,6 @@ export type YCloudInboundEvent = {
       nfm_reply?: { name?: string; body?: string };
     };
     errors?: { code?: number; title?: string }[];
-    /**
-     * Viene en el primer mensaje de quien tocó un anuncio de Click-to-WhatsApp.
-     * Se deja sin tipar: lo lee `leerReferral`, que acepta las dos formas en
-     * que puede llegar.
-     */
-    referral?: unknown;
   };
 };
 
@@ -163,7 +155,6 @@ export function aMensajeEntrante(evento: YCloudInboundEvent): MensajeEntrante | 
       nombre: mensaje.customerProfile?.name,
       telefono: de,
     },
-    origenAnuncio: leerReferral(mensaje.referral, mensaje.wabaId),
     tipoCrudo: tipo,
   };
 }

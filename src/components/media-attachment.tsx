@@ -3,7 +3,6 @@
 import { ExternalLink, Paperclip, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { esCopiaGuardada } from "@/lib/adjuntos-recibidos";
 import { adivinarMedia, type MediaKind } from "@/lib/media-kind";
 
 /**
@@ -103,10 +102,7 @@ export function useMediaKind(url: string | null): MediaKind | null {
  * no está disponible, que con las URL firmadas de Zernio pasa al vencerse.
  *
  * Hay dos caminos para llegar al archivo: el enlace del proveedor y el del CRM
- * (`/api/adjuntos/…`), que lo baja del lado del servidor con las credenciales
- * que haga falta. El segundo es el único que sirve para lo que llega por WAHA:
- * el CRM guarda una copia en un bucket privado, y mientras no está, el archivo
- * vive en una dirección interna que el navegador no alcanza.
+ * (`/api/adjuntos/…`), que lo baja del lado del servidor.
  */
 export function MediaAttachment({
   messageId,
@@ -128,16 +124,11 @@ export function MediaAttachment({
   const roto = veces > 0;
 
   const delCrm = `/api/adjuntos/${messageId}`;
-  // La copia que guardó el CRM no abre directo —el bucket es privado—, así que
-  // va por el CRM desde el principio.
-  const guardada = esCopiaGuardada(url);
   // Una foto o un video se piden primero al proveedor, que suele ser un CDN y
   // no carga al servidor; si no abre, se reintenta por el CRM antes de darlo
   // por perdido.
-  const fuente = veces === 0 && !guardada ? url : delCrm;
-  const agotado = veces >= (guardada ? 1 : 2);
-  // Para el enlace del final: el de una copia guardada sólo abre por el CRM.
-  const enlace = guardada ? delCrm : url;
+  const fuente = veces === 0 ? url : delCrm;
+  const agotado = veces >= 2;
 
   // Esc cierra la imagen ampliada. Sin esto la única salida es el botón, y en
   // una foto a pantalla completa no siempre se ve dónde está.
@@ -253,7 +244,7 @@ export function MediaAttachment({
 
   return (
     <a
-      href={enlace}
+      href={url}
       target="_blank"
       rel="noreferrer"
       className={`mt-1.5 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs transition-colors ${

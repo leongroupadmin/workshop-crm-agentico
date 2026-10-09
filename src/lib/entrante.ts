@@ -2,15 +2,8 @@ import "server-only";
 
 import { after } from "next/server";
 
-import { formatoDeLaCopia, MAX_RECIBIDO_BYTES } from "@/lib/adjuntos-recibidos";
 import { replyWithAi } from "@/lib/ai-reply";
-import {
-  cancelarPorRespuesta,
-  ejecutarYa,
-  programarPorEtapa,
-  programarPorLeadNuevo,
-} from "@/lib/automatizaciones-server";
-import { formasDelTelefono } from "@/lib/difusiones";
+import { formasDelTelefono } from "@/lib/telefono";
 import { asegurarOportunidad } from "@/lib/embudos";
 import {
   contenidoDelMensaje,
@@ -20,13 +13,9 @@ import {
   type MediaLegible,
 } from "@/lib/media-notes";
 import { type Proveedor } from "@/lib/mensajeria";
-import type { OrigenAnuncio } from "@/lib/meta-capi";
-import { guardarOrigen } from "@/lib/meta-capi-server";
 import { describeImage, transcribeAudio } from "@/lib/openai-server";
 import { sendMensajePush } from "@/lib/push-notifications";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { guardarAdjuntoRecibido } from "@/lib/supabase/storage";
-import { credencialesDeWaha } from "@/lib/waha";
 import type { Channel } from "@/types/database";
 
 /**
@@ -55,13 +44,8 @@ export type MensajeEntrante = {
   mensajeId: string;
   direccion: "incoming" | "outgoing";
   texto: string | null;
-  /**
-   * `url` puede faltar: hay proveedores que avisan del adjunto sin darlo.
-   *
-   * `guardarCopia` es para el proveedor que borra el archivo a los pocos
-   * minutos —WAHA—: sin una copia propia, el chat no lo puede mostrar después.
-   */
-  adjunto: { type: string; url: string | null; guardarCopia?: boolean } | null;
+  /** `url` puede faltar: hay proveedores que avisan del adjunto sin darlo. */
+  adjunto: { type: string; url: string | null } | null;
   enviadoEl: string;
   remitente: {
     /** Identidad estable del remitente en el canal. */
@@ -70,11 +54,6 @@ export type MensajeEntrante = {
     telefono?: string;
     foto?: string;
   };
-  /**
-   * El anuncio por el que llegó, si llegó por uno. Sólo lo trae WhatsApp
-   * oficial, y sólo en el primer mensaje después del clic.
-   */
-  origenAnuncio?: OrigenAnuncio | null;
   /**
    * Cómo llamó el proveedor a este evento. No se guarda ni se muestra: es lo
    * único que queda en el log cuando un evento se descarta por venir vacío, y
@@ -132,8 +111,6 @@ export async function procesarEntrante(
   let conversationId: string;
   // Se guarda aparte del `if` para que la IA sepa a quién le está contestando.
   let contactId: string | null = null;
-  // Etapa en la que entró el lead, si la oportunidad se creó en esta pasada.
-  let etapaInicial: string | null = null;
 
   if (existing) {
     conversationId = existing.id;
@@ -156,7 +133,7 @@ export async function procesarEntrante(
 
     // Un lead que entra por chat tiene que caer en el embudo igual que uno
     // cargado a mano; si no, el pipeline solo muestra la mitad de los leads.
-    etapaInicial = await asegurarOportunidad(supabase, workspaceId, contactId, log);
+    await asegurarOportunidad(supabase, workspaceId, contactId, log);
 
     const { data: created, error } = await supabase
       .from("conversations")
@@ -218,10 +195,6 @@ export async function procesarEntrante(
       console.warn(`${log} carrera al abrir el chat: se usa la conversación que ya estaba`);
       conversationId = ganadora.id;
       contactId = ganadora.contact_id;
-      // La oportunidad se fue con el contacto borrado, y la del que ganó la
-      // creó su propia pasada: disparar acá las automatizaciones de lead nuevo
-      // las mandaría dos veces.
-      etapaInicial = null;
     } else {
       conversationId = created.id;
     }
@@ -277,46 +250,7 @@ export async function procesarEntrante(
 
   console.log(`${log} mensaje guardado`, { conversationId, channel: entrante.channel });
 
-  // En su propio `after` y no delante de la IA: la copia no tiene por qué
-  // demorar la respuesta, y la transcripción no la necesita, porque corre ya
-  // mismo, cuando el archivo del proveedor todavía está.
   const guardado = saved?.id ?? null;
-  if (guardado && adjunto?.url && adjunto.guardarCopia) {
-    const original = adjunto.url;
-    after(() => guardarCopia(supabase, { workspaceId, messageId: guardado, url: original }));
-  }
-
-  // Antes que las automatizaciones: si el lead entra y en el mismo momento se
-  // dispara la conversión de "Nuevo lead", el clic ya tiene que estar guardado.
-  if (incoming && contactId && entrante.origenAnuncio) {
-    await guardarOrigen(supabase, contactId, entrante.origenAnuncio, entrante.enviadoEl);
-  }
-
-  // Las automatizaciones van fuera de la respuesta, igual que la IA: leerlas y
-  // programarlas no tiene por qué demorar el 200 que espera el proveedor.
-  if (contactId) {
-    const contacto = contactId;
-    const etapa = etapaInicial;
-    after(async () => {
-      // Cortar va primero. Si se programara antes, el mensaje con el que este
-      // lead recién entra cancelaría la corrida que ese mismo mensaje acaba de
-      // originar.
-      if (incoming) await cancelarPorRespuesta(supabase, { workspaceId, contactId: contacto });
-
-      if (etapa) {
-        const porLead = await programarPorLeadNuevo(supabase, { workspaceId, contactId: contacto });
-        const porEtapa = await programarPorEtapa(supabase, {
-          workspaceId,
-          contactId: contacto,
-          stageId: etapa,
-        });
-        // Lo que no tiene espera sale ahora y no en la próxima vuelta del
-        // reloj: un reparto "al instante" que tarda cinco minutos deja al lead
-        // sin dueño justo cuando acaba de escribir.
-        await ejecutarYa(supabase, [...porLead, ...porEtapa]);
-      }
-    });
-  }
 
   // El aviso al equipo sale con cada mensaje que entra, lo conteste o no la IA.
   // En su propio `after` para no esperar la transcripción ni la respuesta, que
@@ -399,81 +333,6 @@ async function readMediaInto(
     .eq("id", messageId);
 
   if (error) console.error("[ia] no se pudo guardar el texto del adjunto:", error.message);
-}
-
-/**
- * Se queda con una copia del adjunto y deja el mensaje apuntando a ella.
- *
- * Es por WAHA, que borra lo que recibe a los tres minutos: el audio se
- * transcribía bien, pero cuando alguien abría el chat para escucharlo ya no
- * estaba. Ver `adjuntos-recibidos.ts`.
- *
- * Nunca lanza, y si algo falla deja el enlace original. El mensaje ya está
- * guardado y su texto no depende de esto; lo que se pierde es poder abrir el
- * archivo más tarde, que es lo que pasaba antes.
- */
-async function guardarCopia(
-  supabase: Supabase,
-  { workspaceId, messageId, url }: { workspaceId: string; messageId: string; url: string },
-): Promise<void> {
-  let respuesta: Response;
-  try {
-    respuesta = await fetch(url, {
-      headers: credencialesDeWaha(url) ?? undefined,
-      cache: "no-store",
-      // WAHA está en la misma máquina: si en medio minuto no contestó, no va a
-      // contestar, y la función tiene que quedar viva para la IA.
-      signal: AbortSignal.timeout(30_000),
-    });
-  } catch (error) {
-    console.error("[adjuntos] no se pudo bajar el adjunto para guardarlo:", error);
-    return;
-  }
-
-  if (!respuesta.ok) {
-    await respuesta.body?.cancel();
-    console.error("[adjuntos] el proveedor devolvió", respuesta.status, "al guardar el adjunto");
-    return;
-  }
-
-  // Un documento no se copia: el chat no lo muestra adentro, así que con el
-  // enlace del proveedor queda igual que antes.
-  const formato = formatoDeLaCopia(respuesta.headers.get("content-type"), url);
-  const largo = Number(respuesta.headers.get("content-length"));
-  if (!formato || largo > MAX_RECIBIDO_BYTES) {
-    await respuesta.body?.cancel();
-    if (formato) console.warn("[adjuntos] el adjunto es demasiado grande para guardarlo:", largo);
-    return;
-  }
-
-  let bytes: Uint8Array;
-  try {
-    bytes = new Uint8Array(await respuesta.arrayBuffer());
-  } catch (error) {
-    console.error("[adjuntos] no se pudo leer el adjunto para guardarlo:", error);
-    return;
-  }
-
-  const subida = await guardarAdjuntoRecibido({
-    workspaceId,
-    bytes,
-    contentType: formato.contentType,
-    extension: formato.extension,
-  });
-  if (!subida.ok) {
-    console.error("[adjuntos]", subida.error);
-    return;
-  }
-
-  // Sólo si la fila sigue apuntando al original: si alguien la cambió mientras
-  // tanto, lo que escribió vale más que la copia.
-  const { error } = await supabase
-    .from("messages")
-    .update({ media_url: subida.url })
-    .eq("id", messageId)
-    .eq("media_url", url);
-
-  if (error) console.error("[adjuntos] no se pudo apuntar el mensaje a la copia:", error.message);
 }
 
 /**
@@ -609,9 +468,8 @@ async function findByIdentity(
  * El contacto que ya tiene este teléfono, escrito como sea.
  *
  * No alcanza con comparar el texto: el mismo WhatsApp queda guardado de formas
- * distintas segun quien lo haya escrito. WAHA manda los digitos pelados, los
- * otros proveedores ponen el `+`, y quien carga un contacto a mano escribe el
- * numero como se lo dictaron, sin el 9 argentino.
+ * distintas segun quien lo haya escrito: con o sin el `+`, y quien carga un
+ * contacto a mano escribe el numero como se lo dictaron, sin el 9 argentino.
  *
  * Con la igualdad exacta, cada una de esas formas era una persona distinta: el
  * que reservo por Calendar y despues contesto el recordatorio terminaba con dos

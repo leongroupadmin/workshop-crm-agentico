@@ -2,7 +2,6 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { ejecutarYa, programarPorEtapa } from "@/lib/automatizaciones-server";
 import { esNotaInterna } from "@/lib/marcas-del-agente";
 import {
   conversacionParaClasificar,
@@ -307,8 +306,7 @@ async function aplicarMovimiento(
     return;
   }
 
-  // La nota va antes de las automatizaciones: si una de ellas le escribe al lead,
-  // el hilo tiene que mostrar primero por qué la tarjeta cambió de columna.
+  // La nota deja en el hilo por qué la tarjeta cambió de columna.
   const { error: errorDeNota } = await supabase.from("messages").insert({
     conversation_id: input.conversationId,
     sender_type: "ai",
@@ -320,14 +318,4 @@ async function aplicarMovimiento(
   }
 
   console.log(`[ia] movió la tarjeta a ${input.clasificacion.nombre}`);
-
-  // Entrar en la columna por el agente es entrar igual: lo que cuelgue de esa
-  // columna —automatizaciones y la conversión de Meta— se tiene que enterar,
-  // igual que cuando la mueve una persona o un paso `mover`.
-  const paraYa = await programarPorEtapa(supabase, {
-    workspaceId: input.workspaceId,
-    contactId: input.contactId,
-    stageId: input.clasificacion.stageId,
-  });
-  await ejecutarYa(supabase, paraYa);
 }

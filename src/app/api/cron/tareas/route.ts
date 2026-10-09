@@ -1,11 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import {
-  ejecutarPendientes,
-  programarRecordatoriosDeCitas,
-  programarSinRespuesta,
-} from "@/lib/automatizaciones-server";
-import { enviarPendientes as enviarDifusiones } from "@/lib/difusiones-server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { avisarTareasVencidas } from "@/lib/tareas-server";
 import { verifyZernioToken } from "@/lib/zernio";
@@ -13,17 +7,15 @@ import { verifyZernioToken } from "@/lib/zernio";
 // La clave de servicio exige runtime Node, no Edge.
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Una vuelta con muchas corridas puede tardar: el modelo redacta y las APIs
-// contestan a su ritmo.
 export const maxDuration = 60;
 
 /**
- * El reloj de las automatizaciones, de las difusiones y de los avisos de tareas.
+ * El reloj de los avisos de tareas vencidas.
  *
- * Vercel no tiene procesos vivos: cada paso queda anotado en `automation_runs`
- * con la hora en que toca, y alguien de afuera tiene que despertar a mirar. El
- * endpoint no sabe quién lo llama —el cron de Vercel, `pg_cron` de Supabase o
- * un curl— y por eso se puede cambiar de reloj sin tocar el código.
+ * Vercel no tiene procesos vivos: alguien de afuera tiene que despertar a mirar
+ * si hay tareas que vencieron. El endpoint no sabe quién lo llama —el cron de
+ * Vercel, `pg_cron` de Supabase o un curl— y por eso se puede cambiar de reloj
+ * sin tocar el código.
  *
  * Se autentica con `CRON_SECRET`, en el header `Authorization: Bearer` que manda
  * Vercel o en `?token=` para los que no pueden mandar headers. Corre con la
@@ -59,31 +51,11 @@ async function correr(request: NextRequest) {
 
   const supabase = getSupabaseAdmin();
 
-  // El barrido va primero: lo que encuentre queda listo para esta misma vuelta
-  // si ya venció, y no espera a la siguiente.
-  const anotadas = await programarSinRespuesta(supabase);
-  // Los recordatorios de citas se anotan en la misma vuelta. Casi todos quedan
-  // esperando su hora —un aviso de 24 horas antes se anota apenas entra la
-  // reserva—, pero el de "al agendar" sale en esta misma vuelta.
-  const recordatorios = await programarRecordatoriosDeCitas(supabase);
-  const balance = await ejecutarPendientes(supabase);
-
-  // Las difusiones van en el mismo reloj y no en uno propio: es un cron más que
-  // configurar y olvidarse de configurarlo se ve como una difusión que quedó a
-  // medio salir. La creación ya despacha la primera tanda; esto levanta lo que
-  // haya quedado, y lo que falle por un rato de API caída.
-  const difusiones = await enviarDifusiones(supabase);
-
-  // Los avisos de tareas, por la misma razón: un reloj más que nadie se
-  // acuerda de configurar es un aviso que nunca llega.
   const tareas = await avisarTareasVencidas(supabase);
 
-  console.log(
-    "[automatizaciones] vuelta:",
-    JSON.stringify({ anotadas, recordatorios, ...balance, difusiones, tareas }),
-  );
+  console.log("[cron] vuelta:", JSON.stringify({ tareas }));
 
-  return NextResponse.json({ ok: true, anotadas, recordatorios, ...balance, difusiones, tareas });
+  return NextResponse.json({ ok: true, tareas });
 }
 
 // Vercel Cron entra por GET; un `pg_cron` con `pg_net` suele mandar POST.

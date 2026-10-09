@@ -14,7 +14,6 @@ import {
   ListTodo,
   PanelLeftClose,
   PanelLeftOpen,
-  Megaphone,
   LineChart,
   LogOut,
   Menu,
@@ -25,13 +24,11 @@ import {
   RotateCcw,
   Search,
   Settings,
-  ShieldCheck,
   Sun,
   Trash2,
   TrendingDown,
   TrendingUp,
   UsersRound,
-  Workflow,
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -46,7 +43,6 @@ import {
 } from "@/app/actions";
 import { AccessProvider, useAccess } from "@/components/access";
 import { AgendaPanel } from "@/components/agenda-panel";
-import { AutomatizacionesPanel } from "@/components/automatizaciones-panel";
 import { AgentsPanel } from "@/components/agents-panel";
 import { AsistenteWidget, RAIZ_DEL_TEMA } from "@/components/asistente-widget";
 import { AuthGate } from "@/components/auth-gate";
@@ -55,12 +51,10 @@ import { InboxView } from "@/components/inbox-view";
 import { LeadCard } from "@/components/lead-card";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { BaseDeDatosPanel } from "@/components/base-de-datos-panel";
-import { DifusionesPanel } from "@/components/difusiones-panel";
 import { DeleteContactModal } from "@/components/delete-contact-modal";
 import { PipelinePanel } from "@/components/pipeline-panel";
 import { SettingsPanel } from "@/components/settings-panel";
 import { TareasPanel } from "@/components/tareas-panel";
-import { UsersPanel } from "@/components/users-panel";
 import {
   CHANNEL_LABELS,
   Card,
@@ -100,10 +94,7 @@ type View =
   | "Contactos"
   | "Agenda"
   | "Tareas"
-  | "Difusiones"
   | "Agentes IA"
-  | "Automatizaciones"
-  | "Usuarios"
   | "Base de datos"
   | "Configuración";
 
@@ -125,10 +116,7 @@ const VIEW_SLUGS: Record<View, string> = {
   Contactos: "contactos",
   Agenda: "agenda",
   Tareas: "tareas",
-  Difusiones: "difusiones",
   "Agentes IA": "agentes-ia",
-  Automatizaciones: "automatizaciones",
-  Usuarios: "usuarios",
   "Base de datos": "base-de-datos",
   Configuración: "configuracion",
 };
@@ -158,10 +146,7 @@ const NAVIGATION: {
   { label: "Agenda", icon: CalendarDays },
   // Sin permiso: cualquiera del equipo se programa sus propias tareas.
   { label: "Tareas", icon: ListTodo },
-  { label: "Difusiones", icon: Megaphone, permission: "mandar_difusiones" },
   { label: "Agentes IA", icon: Bot, permission: "gestionar_agentes" },
-  { label: "Automatizaciones", icon: Workflow, adminOnly: true },
-  { label: "Usuarios", icon: ShieldCheck, adminOnly: true },
   { label: "Base de datos", icon: Database, adminOnly: true },
   { label: "Configuración", icon: Settings, adminOnly: true },
 ];
@@ -1234,22 +1219,9 @@ function ModuleView({
             onOpenLead={onOpenLead}
           />
         )}
-        {view === "Difusiones" && (
-          <DifusionesPanel
-            contacts={data.contacts}
-            opportunities={data.opportunities}
-            stages={data.stages}
-            timezone={data.timezone}
-            onNotice={onNotice}
-          />
-        )}
         {view === "Agentes IA" && (
           <AgentsPanel pipelines={data.pipelines} stages={data.stages} onNotice={onNotice} />
         )}
-        {view === "Automatizaciones" && (
-          <AutomatizacionesPanel stages={data.stages} onNotice={onNotice} />
-        )}
-        {view === "Usuarios" && <UsersPanel stages={data.stages} onNotice={onNotice} />}
         {view === "Base de datos" && <BaseDeDatosPanel stages={data.stages} />}
         {view === "Configuración" && <SettingsPanel timezone={data.timezone} />}
       </div>

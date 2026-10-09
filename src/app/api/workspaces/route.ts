@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   // Sin esta guarda, cualquiera con sesión y sin alta se armaba su propio CRM
   // vacío desde la pantalla de ingreso y creía que había perdido los chats y
   // las instrucciones de los agentes, cuando en realidad estaba mirando otro
-  // workspace. Ahora el alta la da un administrador desde Usuarios.
+  // workspace. Ahora el alta es crear la cuenta en Supabase.
   const { data: yaInstalado } = await supabaseAdmin
     .from("workspaces")
     .select("id")
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          "El CRM ya está instalado. Pedile a un administrador que dé de alta tu mail desde Usuarios.",
+          "El CRM ya está instalado. Pedile a quien lo administra que cree tu cuenta en Supabase.",
       },
       { status: 409 },
     );

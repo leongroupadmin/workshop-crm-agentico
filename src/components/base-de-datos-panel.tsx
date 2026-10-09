@@ -375,11 +375,6 @@ function CargarContactos({ stages }: { stages: StageRow[] }) {
         </p>
       )}
 
-      <p className="mt-4 text-xs leading-5 text-neutral-400">
-        Los contactos importados no disparan automatizaciones. Una importación de cientos de filas
-        con una automatización de &ldquo;lead nuevo&rdquo; prendida sería una ráfaga de mensajes a
-        gente que nunca escribió, y eso no se deshace.
-      </p>
     </Card>
   );
 }

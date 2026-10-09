@@ -76,9 +76,9 @@ export function AuthGate({
  * app cada vez. La contraseña se escribe y listo, que es lo que se espera de un
  * CRM que se abre diez veces por día.
  *
- * Las contraseñas las pone el administrador al dar de alta a cada persona, en
- * la sección Usuarios. Acá no hay registro: un mail que nadie dio de alta no
- * tiene con qué entrar.
+ * Las cuentas se crean en Supabase (Authentication → Users), con mail y
+ * contraseña. Acá no hay registro: un mail que nadie dio de alta no tiene con
+ * qué entrar.
  */
 function SignIn() {
   const router = useRouter();
@@ -165,7 +165,7 @@ function SignIn() {
       <p className="mt-4 flex items-start gap-2 text-xs leading-5 text-neutral-500">
         <KeyRound className="mt-0.5 size-3.5 shrink-0" />
         <span>
-          ¿Olvidaste la contraseña? Pedile a un administrador que te la cambie desde Usuarios.
+          ¿Olvidaste la contraseña? Pedile a quien administra el CRM que te la cambie en Supabase.
         </span>
       </p>
     </form>
@@ -203,8 +203,8 @@ function NoAccess({ email }: { email: string }) {
       <h1 className="mt-4 text-lg font-semibold">Este mail no tiene acceso</h1>
       <p className="mt-2 text-sm leading-6 text-neutral-500">
         Entraste como <strong className="text-neutral-700 dark:text-neutral-200">{email}</strong>, pero no se te pudo dar
-        acceso al CRM. Probá recargar la página; si sigue igual, pedile a un administrador que te
-        agregue desde la sección Usuarios.
+        acceso al CRM. Probá recargar la página; si sigue igual, pedile a quien administra el CRM
+        que revise tu cuenta en Supabase.
       </p>
 
       <button

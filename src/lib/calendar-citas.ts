@@ -14,7 +14,7 @@
  * sale nunca, sin error a la vista. Mejor que falle en n8n, donde se ve.
  */
 
-import { normalizarTelefono } from "./difusiones.ts";
+import { normalizarTelefono } from "./telefono.ts";
 
 export const ACCIONES = ["alta", "cambio", "baja"] as const;
 export type Accion = (typeof ACCIONES)[number];

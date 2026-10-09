@@ -1,9 +1,6 @@
 import type { NextRequest } from "next/server";
 
-import { rutaDeLaCopia } from "@/lib/adjuntos-recibidos";
 import { getSupabaseServer } from "@/lib/supabase/server";
-import { firmarAdjuntoRecibido } from "@/lib/supabase/storage";
-import { credencialesDeWaha } from "@/lib/waha";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,16 +41,8 @@ function esMultimedia(tipo: string): boolean {
 /**
  * El adjunto de un mensaje, servido desde el CRM.
  *
- * Existe por los audios de WAHA. WAHA guarda el archivo en su propio servidor,
- * detrás de su API key, y la URL que manda apunta a la dirección interna con la
- * que el CRM lo llama —`http://127.0.0.1:3001/…`—. El servidor la puede bajar
- * y por eso el audio se transcribía, pero el navegador no: desde el celular esa
- * dirección no existe, y aunque existiera no tiene la key. El reproductor
- * quedaba en 0:00 y el play no hacía nada.
- *
- * Hoy eso sirve unos minutos, hasta que WAHA borra el archivo. Lo que queda es
- * la copia que guarda el webhook (`adjuntos-recibidos.ts`), en un bucket
- * privado: también pasa por acá, con un enlace firmado que no sale del servidor.
+ * El chat reproduce los audios por acá, y una foto o un video que no abren
+ * directo desde el proveedor se reintentan por acá antes de darlos por perdidos.
  *
  * Quién puede escuchar qué lo decide RLS, igual que en el resto del chat: el
  * mensaje se busca con la sesión del usuario, así que un operario que no ve una
@@ -66,27 +55,14 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/api/adjuntos
   const supabase = await getSupabaseServer();
   const { data } = await supabase
     .from("messages")
-    .select("media_url, conversations!inner(workspace_id)")
+    .select("media_url")
     .eq("id", id)
     .maybeSingle();
 
   const url = typeof data?.media_url === "string" ? data.media_url : null;
   if (!url || !/^https?:\/\//i.test(url)) return new Response(null, { status: 404 });
 
-  // La copia se firma con la service role, que ve todos los workspaces. Por
-  // eso tiene que ser del mismo workspace que el mensaje: la fila se puede
-  // editar, y apuntarla a la copia de otro cliente no puede servir para oírla.
-  const ruta = rutaDeLaCopia(url, process.env.NEXT_PUBLIC_SUPABASE_URL);
-  const conversacion = Array.isArray(data?.conversations) ? data.conversations[0] : data?.conversations;
-  const workspace = typeof conversacion?.workspace_id === "string" ? conversacion.workspace_id : null;
-  if (ruta && (!workspace || !ruta.startsWith(`${workspace}/`))) {
-    return new Response(null, { status: 404 });
-  }
-
-  const destino = ruta ? await firmarAdjuntoRecibido(ruta) : url;
-  if (!destino) return new Response(null, { status: 404 });
-
-  const pedido = new Headers(credencialesDeWaha(url) ?? undefined);
+  const pedido = new Headers();
   const rango = request.headers.get("range");
   if (rango) pedido.set("Range", rango);
   // Sin compresión: el tamaño que se le pasa al navegador tiene que ser el del
@@ -95,7 +71,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/api/adjuntos
 
   let original: Response;
   try {
-    original = await fetch(destino, { headers: pedido, cache: "no-store", signal: request.signal });
+    original = await fetch(url, { headers: pedido, cache: "no-store", signal: request.signal });
   } catch (error) {
     // Cortar el audio a mitad de carga también llega acá, y eso no es una falla.
     if (!request.signal.aborted) console.error("[adjuntos] no se pudo pedir el adjunto:", error);

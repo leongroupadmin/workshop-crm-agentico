@@ -1,7 +1,6 @@
 import "server-only";
 
 import { razonaAntesDeEscribir, TECHO_RESPUESTA, techoDelModelo } from "@/lib/modelos-ia";
-import { credencialesDeWaha } from "@/lib/waha";
 
 /**
  * Cliente de OpenAI. Es el único: la key vive en `OPENAI_API_KEY` y nunca sale
@@ -312,14 +311,10 @@ const VISION_MODEL = "gpt-4o-mini";
 async function downloadMedia(
   url: string,
 ): Promise<{ ok: true; bytes: ArrayBuffer; contentType: string } | { ok: false; error: string }> {
-  // WAHA sirve los adjuntos detrás de su API key, así que ese pedido sale
-  // firmado de entrada: reintentar sin credenciales no lo arreglaría.
-  const credenciales = credencialesDeWaha(url);
-
   let media: Response;
   try {
-    media = await fetch(url, credenciales ? { headers: credenciales } : undefined);
-    if ((media.status === 401 || media.status === 403) && !credenciales && process.env.ZERNIO_API_KEY) {
+    media = await fetch(url);
+    if ((media.status === 401 || media.status === 403) && process.env.ZERNIO_API_KEY) {
       media = await fetch(url, {
         headers: { Authorization: `Bearer ${process.env.ZERNIO_API_KEY}` },
       });

@@ -1,19 +1,14 @@
--- Citas que bajan de Google Calendar, y el lugar de donde van a colgar los
--- recordatorios.
+-- Citas que bajan de Google Calendar.
 --
 -- Calendar es la fuente de la verdad y la tarjeta del CRM es un espejo: el
 -- vendedor agenda donde ya agenda, n8n avisa, y el CRM se entera. Eso define
 -- casi todo lo que sigue.
 --
--- Tres flujos, y los dos últimos no son sobre la tarjeta sino sobre el
--- recordatorio ya encolado:
+-- Tres flujos:
 --
 --   alta    en Calendar -> nace la cita
---   cambio  de día u hora -> la cita se corrige *y* el recordatorio viejo se
---           cancela, porque apunta al horario que ya no es
---   baja    -> la cita queda cancelada *y* el recordatorio se cancela, que es
---           el punto del flujo: una llamada borrada que igual avisa es peor
---           que no avisar
+--   cambio  de día u hora -> la cita se corrige
+--   baja    -> la cita queda cancelada
 --
 -- La clave de todo es `appointments.google_event_id`, que ya existía sin usarse
 -- desde la migración inicial, con su `unique (workspace_id, google_event_id)`.
@@ -90,48 +85,3 @@ comment on column public.appointments.tipo is
   'Clase de cita. El disparador de recordatorios filtra por acá.';
 comment on column public.appointments.telefono is
   'Teléfono con el que se reservó, ya en E.164. Explica a dónde salió el recordatorio.';
-
-/* --------------------------------------------------- corridas de una cita */
-
--- De qué cita salió el recordatorio.
---
--- Sin esta columna el índice único de abajo permite una sola corrida activa por
--- (automatización, contacto), así que un cliente con dos turnos en la semana
--- recibe el recordatorio de uno y el del otro se pierde sin dejar rastro.
-alter table public.automation_runs
-  add column if not exists appointment_id uuid references public.appointments(id) on delete cascade;
-
--- El horario que tenía la cita cuando se anotó la corrida.
---
--- Es lo que hace que un cambio de día se note. El barrido no vuelve a anotar
--- una cita que ya tiene corrida *para ese horario*; si la cita se mueve, el
--- horario deja de coincidir y corresponde un recordatorio nuevo —que es lo
--- correcto, el cliente tiene que enterarse del jueves—. La corrida vieja la
--- cancela el webhook, para que no avise del martes que ya no existe.
-alter table public.automation_runs
-  add column if not exists cita_inicio timestamptz;
-
--- Lo que consulta el webhook para cancelar los recordatorios de una cita que se
--- movió o se borró.
-create index if not exists automation_runs_cita_idx
-  on public.automation_runs (appointment_id)
-  where appointment_id is not null;
-
--- El índice de "una sola corrida activa" se parte en dos.
---
--- El de siempre sigue valiendo para los seguimientos, que son por contacto. Los
--- recordatorios son por cita: dos turnos del mismo cliente son dos corridas
--- legítimas, y lo que no puede haber es dos recordatorios vivos de la *misma*
--- cita.
-drop index if exists public.automation_runs_una_activa_idx;
-
-create unique index if not exists automation_runs_una_activa_idx
-  on public.automation_runs (automation_id, contact_id)
-  where estado = 'pendiente' and appointment_id is null;
-
-create unique index if not exists automation_runs_una_por_cita_idx
-  on public.automation_runs (automation_id, appointment_id)
-  where estado = 'pendiente' and appointment_id is not null;
-
-comment on column public.automation_runs.cita_inicio is
-  'Horario de la cita al anotar la corrida. Si cambió, corresponde un recordatorio nuevo.';

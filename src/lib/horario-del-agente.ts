@@ -22,15 +22,9 @@
  * Las franjas son una lista y no un par de columnas porque "una" es tan
  * arbitrario como "dos": el negocio que corta al mediodía necesita dos, el que
  * atiende corrido una, y con la lista los dos casos son el mismo código. La
- * cuenta de "¿está abierta esta franja ahora?" no se reescribe acá: la hace
- * `dentroDeLaFranja`, que es la que ya sabe de husos raros y de cambios de
- * horario de verano, y la que está probada.
+ * cuenta de "¿está abierta esta franja ahora?" la hace `dentroDeLaFranja`, al
+ * final del archivo, con `Intl` para respetar husos raros y horario de verano.
  */
-
-// Con la ruta relativa y la extensión a la vista, igual que el resto de los
-// módulos con pruebas: así `node --test` puede importar este archivo sin el
-// resolvedor de alias de Next.
-import { dentroDeLaFranja, diaLocal } from "./automatizaciones.ts";
 
 /** 0 = domingo, igual que `Date.getDay()`. */
 export const TODOS_LOS_DIAS = [0, 1, 2, 3, 4, 5, 6];
@@ -41,7 +35,7 @@ export const MINUTOS_DEL_DIA = 1440;
 /**
  * Una franja de atención, en minutos desde la medianoche.
  *
- * El cierre es exclusivo, igual que la franja de envío de las automatizaciones:
+ * El cierre es exclusivo:
  * un horario que cierra a las 18 no contesta el mensaje de las 18:00 en punto.
  */
 export type Franja = { desde: number; hasta: number };
@@ -178,7 +172,7 @@ function enLoMarcado(instante: Date, horario: HorarioDelAgente, zona: string): b
 
   // Alcanza con una: entre dos franjas hay un hueco, y el hueco no está marcado.
   return franjas.some((franja) =>
-    dentroDeLaFranja(instante, { horaDesde: franja.desde, horaHasta: franja.hasta, zona }),
+    dentroDeLaFranja(instante, franja, zona),
   );
 }
 
@@ -432,4 +426,47 @@ function entero(valor: unknown): number | null {
     return Number.isFinite(numero) ? Math.trunc(numero) : null;
   }
   return null;
+}
+
+/* ------------------------------------------------------------- hora local */
+
+/**
+ * Minutos desde la medianoche en la zona pedida.
+ *
+ * `Intl` es lo único que sabe de horarios de verano y de husos que no son
+ * horas enteras. Hacerlo con offsets fijos funcionaría hasta el primer cambio
+ * de hora.
+ */
+function minutosLocales(instante: Date, zona: string): number {
+  const partes = new Intl.DateTimeFormat("en-GB", {
+    timeZone: zona,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(instante);
+
+  const hora = Number(partes.find((p) => p.type === "hour")?.value ?? "0");
+  const minuto = Number(partes.find((p) => p.type === "minute")?.value ?? "0");
+  return hora * 60 + minuto;
+}
+
+/** Una franja invertida o vacía se lee como "a cualquier hora". */
+function dentroDeLaFranja(instante: Date, franja: Franja, zona: string): boolean {
+  if (franja.desde >= franja.hasta) return true;
+  const ahora = minutosLocales(instante, zona);
+  return ahora >= franja.desde && ahora < franja.hasta;
+}
+
+/**
+ * Qué día de la semana es en la zona pedida, 0 = domingo.
+ *
+ * Por `Intl` y no por `getDay()` porque el día lo decide la zona del workspace:
+ * a las 22 de un domingo en Buenos Aires, en UTC ya es lunes.
+ */
+function diaLocal(instante: Date, zona: string): number {
+  const nombre = new Intl.DateTimeFormat("en-US", { timeZone: zona, weekday: "short" }).format(
+    instante,
+  );
+  const dia = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(nombre);
+  return dia === -1 ? 0 : dia;
 }

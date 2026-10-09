@@ -59,9 +59,8 @@ import {
   initials,
   money,
 } from "@/components/ui";
-import { esCopiaGuardada } from "@/lib/adjuntos-recibidos";
 import type { ContactRow, ConversationRow, StageRow } from "@/lib/crm-data";
-import { sePuedeEscribirPrimero } from "@/lib/difusiones";
+import { sePuedeEscribirPrimero } from "@/lib/telefono";
 import {
   silenceLabelSince,
   silenceStateSince,
@@ -1205,7 +1204,7 @@ function FilesSection({ lead, timezone }: { lead: LeadDetail; timezone: string }
       {lead.files.map((file) => (
         <li key={file.id}>
           <a
-            href={esCopiaGuardada(file.url) ? `/api/adjuntos/${file.id}` : file.url}
+            href={file.url}
             target="_blank"
             rel="noreferrer"
             className="flex items-start gap-2 rounded-lg p-2 text-sm transition-colors hover:bg-neutral-50 dark:hover:bg-white/5"

@@ -1,11 +1,8 @@
 /**
  * Los tres flujos de Calendar, del lado de la base.
  *
- * Calendar es la fuente de la verdad; acá sólo se espeja. Lo que hace especiales
- * a los flujos de cambio y de baja es que **no son sobre la cita**: son sobre el
- * recordatorio ya encolado, que vive en `automation_runs`. Una cita puede quedar
- * impecablemente cancelada y el recordatorio salir igual, porque son dos tablas.
- * Esa es la razón de ser de `cancelarRecordatorios`.
+ * Calendar es la fuente de la verdad; acá sólo se espeja: el alta crea la
+ * cita, el cambio la mueve y la baja la cancela.
  *
  * Corre con la clave de servicio desde el webhook, así que no pasa por RLS: cada
  * consulta filtra por `workspace_id` a mano.
@@ -15,7 +12,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { formasDelTelefono } from "@/lib/difusiones";
+import { formasDelTelefono } from "@/lib/telefono";
 
 import type { EventoDeCalendar } from "@/lib/calendar-citas";
 import { asegurarOportunidad } from "@/lib/embudos";
@@ -29,7 +26,6 @@ type Aplicado = {
   accion: EventoDeCalendar["accion"];
   citaId: string;
   creada: boolean;
-  recordatoriosCancelados: number;
 };
 
 /**
@@ -122,7 +118,7 @@ async function alta(
     .single();
 
   if (!error && data) {
-    return { ok: true, accion: "alta", citaId: data.id, creada: true, recordatoriosCancelados: 0 };
+    return { ok: true, accion: "alta", citaId: data.id, creada: true };
   }
 
   // 23505 es la violación de `unique (workspace_id, google_event_id)`: la cita
@@ -166,7 +162,7 @@ async function cambio(
   if (evento.titulo) cambios.title = evento.titulo;
   if (evento.link) cambios.calendar_link = evento.link;
   // Un evento que se había cancelado y se reactiva en Calendar vuelve a estar en
-  // pie: sin esto quedaría cancelado para siempre y sin recordatorios.
+  // pie: sin esto quedaría cancelado para siempre.
   if (cita.status === "cancelled") cambios.status = "scheduled";
 
   const { error } = await supabase
@@ -180,21 +176,11 @@ async function cambio(
     return { ok: false, error: error.message, status: 500 };
   }
 
-  // El corazón del flujo 2. Sólo se cancelan los recordatorios que quedaron
-  // apuntando a un horario que ya no es: si el evento cambió de título o de
-  // link pero no de hora, el recordatorio encolado sigue siendo correcto y
-  // volver a encolarlo mandaría dos.
-  const cancelados = await cancelarRecordatorios(supabase, cita.id, {
-    salvoInicio: evento.inicio,
-    motivo: "La cita se movió en Calendar.",
-  });
-
   return {
     ok: true,
     accion: "cambio",
     citaId: cita.id,
     creada: false,
-    recordatoriosCancelados: cancelados,
   };
 }
 
@@ -208,8 +194,7 @@ async function baja(
   const cita = await buscarCita(supabase, workspaceId, evento.eventId);
   if (!cita) return { ok: true, ignorado: `No hay ninguna cita con el evento ${evento.eventId}.` };
 
-  // Se cancela, no se borra. La pregunta que aparece después es "¿por qué no le
-  // llegó el recordatorio?", y una fila borrada no la contesta. La agenda ya
+  // Se cancela, no se borra: una fila borrada no deja rastro. La agenda ya
   // muestra el estado con su propio color, así que desde la pantalla se ve
   // igual de claro que si hubiera desaparecido.
   const { error } = await supabase
@@ -223,66 +208,12 @@ async function baja(
     return { ok: false, error: error.message, status: 500 };
   }
 
-  // El punto del flujo 3: una llamada borrada que igual avisa es peor que no
-  // avisar.
-  const cancelados = await cancelarRecordatorios(supabase, cita.id, {
-    motivo: "La cita se canceló en Calendar.",
-  });
-
   return {
     ok: true,
     accion: "baja",
     citaId: cita.id,
     creada: false,
-    recordatoriosCancelados: cancelados,
   };
-}
-
-/* ------------------------------------------------------------ recordatorios */
-
-/**
- * Corta los recordatorios encolados de una cita.
- *
- * `salvoInicio` deja vivos los que ya apuntan al horario correcto, que es lo que
- * evita el recordatorio duplicado cuando el evento cambió de título pero no de
- * hora.
- *
- * Hoy no hay recordatorios configurados, así que esto no cancela nada: es la
- * parte del flujo que queda lista para cuando el disparador de citas exista, y
- * así ese trabajo no tiene que volver a pasar por el webhook.
- */
-async function cancelarRecordatorios(
-  supabase: Supabase,
-  citaId: string,
-  opciones: { motivo: string; salvoInicio?: Date },
-): Promise<number> {
-  const consulta = supabase
-    .from("automation_runs")
-    .update({
-      estado: "cancelada",
-      detalle: opciones.motivo,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("appointment_id", citaId)
-    .eq("estado", "pendiente");
-
-  // `neq` contra null no da verdadero en Postgres, así que las corridas sin
-  // horario anotado no entran acá. Es deliberado: ésas son las confirmaciones
-  // de reserva, y mover la cita de horario no deshace la reserva. Una baja sí
-  // las cancela, porque llega sin `salvoInicio`.
-  const { data, error } = await (opciones.salvoInicio
-    ? consulta.neq("cita_inicio", opciones.salvoInicio.toISOString())
-    : consulta
-  ).select("id");
-
-  if (error) {
-    // Sin la migración de esta tanda las columnas no existen. No es fatal para
-    // la cita, que ya quedó guardada, pero hay que verlo.
-    console.error(`${LOG} no se pudieron cancelar los recordatorios:`, error.message);
-    return 0;
-  }
-
-  return data?.length ?? 0;
 }
 
 /* ---------------------------------------------------------------- consultas */
@@ -399,11 +330,6 @@ async function buscarOCrearContacto(
     return null;
   }
 
-  // A propósito no se llama a `programarPorLeadNuevo`: las automatizaciones de
-  // "lead nuevo" se escribieron para quien llega por un anuncio o escribiendo
-  // por WhatsApp, y dispararlas acá le mandaría el mensaje de bienvenida a
-  // alguien que acaba de reservar una llamada, encimado con la confirmación de
-  // la reserva. Si algún día se quiere, es una línea.
   return creado.id;
 }
 
