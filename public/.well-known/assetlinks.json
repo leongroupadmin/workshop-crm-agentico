@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "agency.leongroup.crm.twa",
+      "sha256_cert_fingerprints": [
+        "43:48:C9:5C:3F:C0:59:25:3A:1C:37:CA:DE:D6:AE:39:E8:4C:A0:C1:73:7A:9C:88:77:62:3F:1A:39:51:30:E4"
+      ]
+    }
+  }
+]

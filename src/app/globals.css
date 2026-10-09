@@ -1,0 +1,580 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+  Los colores de la marca.
+
+  La guía de diseño está definida sobre el crema, que es como arranca el CRM.
+  La versión oscura de abajo no es otra paleta: es la misma dada vuelta —el
+  ámbar no se toca, y el crema y la tinta cambian de lugar— para que las dos se
+  sientan la misma plataforma.
+
+  Todo lo neutro tira a cálido, del crema al casi negro del menú: es la misma
+  familia del ámbar, y un gris frío al lado del dorado lo haría ver sucio.
+
+  Estas variables son la referencia; en los componentes los colores se escriben
+  con las clases de Tailwind, que dan exactamente estos valores: el ámbar del
+  acento es `amber-500`, la tinta sobre el acento `#17140c`, el verde de éxito
+  `emerald-*` y el rojo de error `red-*`.
+*/
+:root {
+  --bg: #eae5d6;
+  --bg-panel: #17140c;
+  --bg-card: #f9f8f3;
+  --border: #ddd8c9;
+
+  --text: #11100c;
+  --text-dim: #6f6b61;
+  --text-faint: #8f8b80;
+
+  /* El ámbar es el mismo en los dos modos: es lo que identifica la marca. */
+  --accent: #f59e0b;
+  --accent-hover: #fbbf24;
+  --gold-soft: #fcd34d;
+  --on-accent: #17140c;
+
+  --success: #2f7d55;
+  --danger: #c0392b;
+  --warning: #a86a08;
+
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+/*
+  Los desplegables, los calendarios y las barras de scroll los dibuja el
+  navegador, no nosotros: no leen nuestras clases. Sin decirle en qué modo
+  estamos, abre la lista de un `select` con fondo blanco y le deja al texto el
+  color que heredó —blanco también—, así que no se lee nada.
+*/
+:root {
+  color-scheme: light;
+}
+
+.claro {
+  color-scheme: light;
+}
+
+/*
+  El equivalente oscuro: el crema y la tinta cambian de lugar, el ámbar queda.
+
+  El panel no se invierte con el resto. El menú ya es casi negro sobre el fondo
+  claro —es lo que le da carácter a la pantalla—, así que en modo oscuro se
+  queda donde está en vez de aclararse.
+*/
+.dark {
+  color-scheme: dark;
+  --bg: #100d08;
+  --bg-panel: #17140c;
+  --bg-card: #1c1811;
+  --border: #272015;
+
+  --text: #f2f0e6;
+  --text-dim: #a8a498;
+  --text-faint: #7b776c;
+
+  --success: #6cc094;
+  --danger: #e88a7e;
+  --warning: #d9973f;
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --font-sans: var(--font);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/*
+  El fondo del documento acompaña al modo claro, que es con el que arranca la
+  app. Sin esto se ve un destello de otro color antes del primer pintado y una
+  franja ajena al hacer overscroll en el celular.
+*/
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+  El color de texto por defecto de cada modo.
+  
+  El `body` toma el suyo de `:root`, que es el claro, y el modo oscuro vive en un
+  div más adentro: lo que no traiga una clase de Tailwind propia —un `select`,
+  por ejemplo— se quedaba con la tinta oscura sobre fondo oscuro. Esto sólo fija
+  lo que se hereda; cualquier clase puesta en el elemento le sigue ganando.
+*/
+.dark,
+.claro {
+  color: var(--text);
+}
+
+/*
+  Red de seguridad: hay navegadores que arman la lista del `select` con el color
+  heredado aunque se les diga el modo. Dárselo explícito no molesta a los que ya
+  lo hacían bien.
+*/
+option,
+optgroup {
+  background-color: var(--bg-card);
+  color: var(--text);
+}
+
+/* Respeta a quien pidió menos movimiento en su sistema. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    /* Sin esto, una animación en bucle no se frena: late a 0.01ms por vuelta,
+       que es peor que el movimiento original. Con una sola repetición se queda
+       en el fotograma final y listo. */
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/*
+  El papel del chat.
+
+  El hilo de mensajes sobre un color plano se veía como un documento en blanco;
+  con los dibujos de fondo se lee como una conversación, que es lo que la gente
+  ya conoce de cualquier app de mensajería. La baldosa vive en
+  `public/fondo-chat.svg` y trae sus propios dibujos, no los de WhatsApp.
+
+  El archivo es uno solo para los dos modos: el trazo es un gris cálido bien
+  tenue, que se apoya igual sobre el crema y sobre el casi negro. La fuerza del
+  dibujo es el `stroke-opacity` del SVG; de ahí se sube o se baja.
+*/
+.fondo-chat {
+  background-image: url("/fondo-chat.svg");
+  background-size: 320px 320px;
+  background-repeat: repeat;
+}
+
+/*
+  La barra de desplazamiento del embudo.
+
+  El navegador la dibuja con su ancho de sistema —gruesa, gris y con flechas en
+  las puntas—, y en el board queda cruzada en el medio de la pantalla, que es lo
+  primero que se ve al entrar a Pipeline. Acá se pide fina y del gris tenue de
+  la marca: sigue estando para agarrarla con el mouse, pero deja de competir con
+  las columnas.
+
+  En el embudo esta clase va en la barra de arriba, no en el board: el board usa
+  `.sin-barra` y esconde la propia, que el navegador siempre dibuja al pie y con
+  las columnas altas quedaba abajo de todo.
+*/
+.barra-fina {
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-faint) transparent;
+}
+
+.barra-fina::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.barra-fina::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.barra-fina::-webkit-scrollbar-thumb {
+  background-color: var(--text-faint);
+  border-radius: 9999px;
+}
+
+.barra-fina::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-dim);
+}
+
+/* Scrollea igual —con la rueda, con el dedo y solo cuando se arrastra una
+   tarjeta al borde—, pero sin barra: la que se ve es la de arriba. */
+.sin-barra {
+  scrollbar-width: none;
+}
+
+.sin-barra::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+  La barra de arriba del embudo sólo existe para agarrarla con el mouse.
+
+  En el celular las columnas se empujan con el dedo y el imán de abajo las deja
+  derechas, así que una tira de ocho píxeles para arrastrar no suma nada: era
+  alto gastado justo arriba de las columnas, que es lo que menos sobra en una
+  pantalla angosta.
+*/
+@media (hover: none) and (pointer: coarse) {
+  .barra-de-arrastre {
+    display: none;
+  }
+}
+
+/*
+  El imán que acomoda las columnas, sólo donde se scrollea con el dedo.
+
+  El embudo venía con `snap-x` para todos. Con la barra arriba eso se peleaba:
+  al arrastrarla se le escribe la posición al board, el imán la corría hasta la
+  columna más cercana y el pulgar quedaba unos dedos corrido de donde estaba el
+  mouse. En el celular no hay barra que arrastrar —se empuja el board con el
+  dedo— así que ahí el imán sigue siendo lo que uno quiere: la columna queda
+  derecha en pantalla y no cortada por la mitad.
+*/
+@media (hover: none) and (pointer: coarse) {
+  .snap-tactil {
+    scroll-snap-type: x proximity;
+  }
+}
+
+/*
+  ─────────────────────────────────────────────────────────────────────────────
+  El movimiento de la landing.
+
+  Todo lo de acá abajo lo usa sólo la página pública. Está en el CSS global y no
+  en el componente porque son fotogramas —`@keyframes` no se puede escribir en
+  una clase de Tailwind— y porque son pocos y compartidos: la entrada escalonada
+  del hero, el punto que late y la línea que se dibuja sola.
+
+  La regla es que el movimiento explique algo. Nada se mueve porque quede lindo:
+  los bloques del producto entran en el orden en que el sistema los va llenando,
+  el punto late porque hay un agente escuchando del otro lado y la línea se
+  dibuja porque muestra por dónde viaja el lead.
+
+  Todas terminan con `animation-fill-mode: both`. Eso importa para quien pidió
+  menos movimiento en su sistema: el bloque de más arriba en este archivo les
+  deja la animación en 0.01ms, y sin `both` un elemento que empieza en opacidad
+  cero volvería a quedar invisible en vez de aparecer de una.
+*/
+
+@keyframes kivo-aparece {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Los estados del sistema no aparecen: entran de costado, como una notificación. */
+@keyframes kivo-entra-estado {
+  from {
+    opacity: 0;
+    transform: translateX(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes kivo-late {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+}
+
+/* El halo que sale del punto: dice que el agente está escuchando ahora mismo. */
+@keyframes kivo-halo {
+  0% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+
+@keyframes kivo-dibuja {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.kivo-aparece {
+  animation: kivo-aparece 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.kivo-entra-estado {
+  animation: kivo-entra-estado 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.kivo-late {
+  animation: kivo-late 2s ease-in-out infinite both;
+}
+
+.kivo-halo {
+  animation: kivo-halo 2s ease-out infinite both;
+}
+
+.kivo-dibuja {
+  stroke-dasharray: var(--largo, 200);
+  stroke-dashoffset: var(--largo, 200);
+  animation: kivo-dibuja 1.4s ease-out 0.2s both;
+}
+
+/*
+  La trama de la sección oscura.
+
+  Una retícula de líneas de un punto, muy tenue, sobre el carbón. Le da al
+  bloque la textura de una superficie de trabajo —papel cuadriculado, plano de
+  operaciones— en vez del degradado azul que tiene cualquier web de IA.
+*/
+.kivo-reticula {
+  background-image:
+    linear-gradient(to right, rgba(245, 158, 11, 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(245, 158, 11, 0.055) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+/*
+  La misma trama, pero para la banda mostaza del diferencial.
+
+  Es la de arriba al revés: ahí las líneas son de ámbar sobre carbón, acá son de
+  tinta sobre ámbar. El paso es el mismo —56 píxeles— porque las dos bandas se
+  tienen que leer como la misma superficie de trabajo vista con otra luz, y si
+  una tuviera la cuadrícula más apretada que la otra se notaría al scrollear.
+
+  La tinta va más opaca que el ámbar de la otra (0.07 contra 0.055): sobre un
+  fondo claro y saturado la línea se pierde antes.
+*/
+.kivo-reticula-tinta {
+  background-image:
+    linear-gradient(to right, rgba(23, 20, 12, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(23, 20, 12, 0.07) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+/*
+  Las animaciones que corren solas.
+
+  Todas dicen lo mismo con distintas palabras: el sistema trabaja sin que nadie
+  lo empuje. La cita aparece sola en la agenda, el punto recorre la
+  automatización de arriba abajo y el contador de mensajes sin leer late porque
+  nadie lo está atendiendo.
+
+  Las tres tienen el mismo ciclo largo —siete segundos, de los cuales el
+  movimiento ocupa menos de uno— para que no compitan entre ellas ni con lo que
+  se está leyendo. Una animación en bucle que se mueve todo el tiempo cansa; una
+  que se mueve una vez cada tanto se nota, que es lo que queremos.
+
+  La excepción es el embudo, que está más abajo en este archivo y sí se mueve
+  todo el tiempo: ahí el movimiento no acompaña a la pantalla, es la pantalla.
+*/
+
+/* Algo que entra y se queda: cae en su lugar y espera al próximo ciclo. */
+@keyframes kivo-aterriza {
+  0% {
+    opacity: 0;
+    transform: translate(-14px, -6px);
+  }
+  9%,
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* El resalte que acompaña la caída, para que se vea qué acaba de cambiar. */
+@keyframes kivo-recien {
+  0%,
+  9% {
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.3);
+  }
+  26%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+}
+
+/* El punto que viaja por la línea de una automatización, de disparo a acción. */
+@keyframes kivo-viaja {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  10% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(var(--recorrido, 76px));
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: translateY(var(--recorrido, 76px));
+  }
+}
+
+/* Lo que espera atención y no la recibe. */
+@keyframes kivo-alerta {
+  0%,
+  88%,
+  100% {
+    transform: scale(1);
+  }
+  92% {
+    transform: scale(1.08);
+  }
+  96% {
+    transform: scale(1);
+  }
+}
+
+/*
+  Las dos van juntas en una sola declaración, y no en dos clases, porque
+  `animation` es una sola propiedad: puestas en reglas separadas sobre el mismo
+  elemento, la última gana y la otra no corre nunca.
+*/
+.kivo-aterriza {
+  animation:
+    kivo-aterriza 7s cubic-bezier(0.22, 1, 0.36, 1) infinite both,
+    kivo-recien 7s ease-out infinite both;
+}
+
+.kivo-viaja {
+  animation: kivo-viaja 7s ease-in-out infinite both;
+}
+
+.kivo-alerta {
+  animation: kivo-alerta 7s ease-in-out infinite both;
+}
+
+/*
+  El embudo que se mueve solo.
+
+  Una tarjeta que salta de una etapa a la siguiente, para y vuelve a saltar,
+  hasta que se va por el costado y entra una nueva por la izquierda. Es lo que
+  dice el título de la sección —el embudo se mueve mientras nadie mira— y por
+  eso el salto es un desplazamiento de verdad, con la tarjeta pasando por
+  encima del hueco entre columnas, y no un cambio de opacidad entre dos copias.
+
+  `--paso` es lo que hay que mover para caer exactamente en la columna de al
+  lado: el ancho de la tarjeta (100%, que es el ancho interior de la columna)
+  más el `p-2` de las dos columnas (8 + 8) más el `gap-2.5` de la grilla (10).
+  Si en `MiniEmbudo` cambia alguno de esos tres números, cambia acá.
+
+  Son dos juegos de fotogramas y no uno porque la grilla cambia de forma: con
+  cuatro columnas el viaje es de tres saltos, y con dos —donde las etapas 3 y
+  4 caen en otra fila— es de uno solo, o la tarjeta se iría fuera de su fila.
+
+  El ciclo es de dieciséis segundos y las dos viajeras van desfasadas ocho, así
+  que quedan siempre a dos etapas de distancia: nunca se encuentran en la misma
+  columna y casi siempre hay una en movimiento.
+*/
+.kivo-embudo-viaja {
+  --paso: calc(100% + 26px);
+  animation: kivo-embudo-2 16s cubic-bezier(0.65, 0, 0.35, 1) infinite both;
+}
+
+@media (min-width: 64rem) {
+  .kivo-embudo-viaja {
+    animation-name: kivo-embudo-4;
+  }
+}
+
+/* Dos columnas: un salto, una pausa larga, salida por la derecha y vuelta. */
+@keyframes kivo-embudo-2 {
+  0%,
+  12% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(calc(var(--paso) * 0.5), -4px) scale(1.04);
+  }
+  18%,
+  55% {
+    opacity: 1;
+    transform: translate(var(--paso), 0) scale(1);
+  }
+  62% {
+    opacity: 0;
+    transform: translate(calc(var(--paso) + 24px), 0) scale(0.97);
+  }
+  /* El salto de vuelta al principio, hecho con la tarjeta ya invisible. */
+  62.01%,
+  88% {
+    opacity: 0;
+    transform: translate(0, 0) scale(1);
+  }
+  94%,
+  100% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+/* Cuatro columnas: el recorrido entero, de `Nuevo lead` a `Propuesta`. */
+@keyframes kivo-embudo-4 {
+  0%,
+  5% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  7% {
+    opacity: 1;
+    transform: translate(calc(var(--paso) * 0.5), -4px) scale(1.04);
+  }
+  9%,
+  26% {
+    opacity: 1;
+    transform: translate(var(--paso), 0) scale(1);
+  }
+  28% {
+    opacity: 1;
+    transform: translate(calc(var(--paso) * 1.5), -4px) scale(1.04);
+  }
+  30%,
+  47% {
+    opacity: 1;
+    transform: translate(calc(var(--paso) * 2), 0) scale(1);
+  }
+  49% {
+    opacity: 1;
+    transform: translate(calc(var(--paso) * 2.5), -4px) scale(1.04);
+  }
+  51%,
+  68% {
+    opacity: 1;
+    transform: translate(calc(var(--paso) * 3), 0) scale(1);
+  }
+  73% {
+    opacity: 0;
+    transform: translate(calc(var(--paso) * 3 + 24px), 0) scale(0.97);
+  }
+  73.01%,
+  88% {
+    opacity: 0;
+    transform: translate(0, 0) scale(1);
+  }
+  93%,
+  100% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+    Las dos viajeras comparten carril y lo único que las separa es el
+    movimiento: quietas quedarían una encima de la otra, así que queda una.
+  */
+  .kivo-embudo-viaja-b {
+    display: none;
+  }
+}

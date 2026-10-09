@@ -1,0 +1,44 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    // Permite escribir la extensión al importar dentro de `src`. Hace falta
+    // para que un módulo con pruebas pueda usar a otro: el runner de Node
+    // resuelve rutas relativas sólo con la extensión escrita, y sin esto la
+    // alternativa era duplicar la lógica compartida. No cambia lo que se
+    // publica: el proyecto es `noEmit`, compila Next.
+    "allowImportingTsExtensions": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": [
+    // Las pruebas las corre Node quitando los tipos, no el compilador.
+    "pruebas",
+    "node_modules"
+  ]
+}
