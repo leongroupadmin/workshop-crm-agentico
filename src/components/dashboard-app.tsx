@@ -340,7 +340,7 @@ function Workspace({
         <div className={`flex items-center gap-3 px-2 ${menuCollapsed ? "lg:justify-center lg:px-0" : ""}`}>
           <BrandMark />
           <div className={`min-w-0 ${menuCollapsed ? "lg:hidden" : ""}`}>
-            <p className="font-semibold">Kivo</p>
+            <p className="font-semibold">CRM</p>
             <p className="truncate text-xs text-neutral-500 dark:text-neutral-400">{context.workspaceName}</p>
           </div>
           <button

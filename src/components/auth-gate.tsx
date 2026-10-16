@@ -35,7 +35,7 @@ export function AuthGate({
         <div className="flex items-center gap-3">
           <BrandMark className="size-11" />
           <div>
-            <p className="text-lg font-semibold">Kivo</p>
+            <p className="text-lg font-semibold">CRM</p>
             <p className="text-xs text-neutral-500">CRM agéntico multicanal</p>
           </div>
         </div>

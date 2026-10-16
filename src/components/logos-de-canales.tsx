@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 
 /**
- * Los logos de los servicios con los que se conecta Kivo.
+ * Los logos de los servicios con los que se conecta el CRM.
  *
  * Están dibujados acá y no servidos como archivos desde `public/` por dos
  * razones. La primera es que son cinco: cinco `<img>` son cinco pedidos más al
@@ -91,7 +91,7 @@ function LogoMeta(props: PropsDeLogo) {
 }
 
 /**
- * Con qué se conecta Kivo, en orden de importancia para el que visita.
+ * Con qué se conecta el CRM, en orden de importancia para el que visita.
  *
  * Primero los tres canales por donde le escriben a un negocio, que es la
  * promesa de la bandeja única; después el calendario, que es donde termina la

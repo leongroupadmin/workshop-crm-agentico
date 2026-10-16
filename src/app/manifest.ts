@@ -18,8 +18,8 @@ import type { MetadataRoute } from "next";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Kivo",
-    short_name: "Kivo",
+    name: "CRM",
+    short_name: "CRM",
     description: "CRM agéntico multicanal para León Group.",
     start_url: "/",
     display: "standalone",
