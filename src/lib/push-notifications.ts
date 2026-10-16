@@ -3,7 +3,6 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 
-import { safeTimeZone } from "@/lib/fechas";
 import { handoffRecipientIds, type PushMember } from "@/lib/push-recipients";
 
 type SubscriptionRow = {
@@ -329,93 +328,4 @@ function detalleDelError(error: unknown): string {
   if (status === 404 || status === 410) return `${status} — este dispositivo ya no existe, volvé a activar los avisos.`;
   if (status) return `${status} — ${cuerpo || mensaje || "sin detalle"}`.slice(0, 300);
   return (mensaje || "Fallo desconocido al enviar.").slice(0, 300);
-}
-
-/**
- * Avisa que alguien reservó una cita.
- *
- * Una reserva entra sola, por Calendar, sin que nadie del equipo toque nada:
- * si no avisa, se entera quien mire la Agenda, y eso puede ser al otro día.
- * Un turno que nadie preparó es el mismo daño que un turno perdido.
- *
- * Los destinatarios son los mismos que los de una derivación —el responsable
- * del contacto, o quien pueda atender leads sin asignar— por la misma razón:
- * es la lista de quién está de guardia. Tener dos reglas distintas de a quién
- * avisar terminaría con una de las dos desactualizada.
- */
-export async function sendCitaPush(
-  supabase: SupabaseClient,
-  input: { workspaceId: string; appointmentId: string },
-): Promise<void> {
-  const config = vapidConfig();
-  if (!config) {
-    console.warn("[push] faltan VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY o VAPID_SUBJECT");
-    return;
-  }
-
-  const { data: cita, error } = await supabase
-    .from("appointments")
-    .select("title, start_time, contacts(name, assigned_to)")
-    .eq("id", input.appointmentId)
-    .eq("workspace_id", input.workspaceId)
-    .maybeSingle();
-
-  if (error || !cita) {
-    console.error("[push] no se pudo leer la cita:", error?.message ?? "no existe");
-    return;
-  }
-
-  // PostgREST devuelve la relación como objeto o como arreglo de uno.
-  const contacto = (Array.isArray(cita.contacts) ? cita.contacts[0] : cita.contacts) as
-    | { name?: unknown; assigned_to?: unknown }
-    | null;
-
-  const { data: members } = await supabase
-    .from("workspace_members")
-    .select("user_id, role, permissions")
-    .eq("workspace_id", input.workspaceId);
-
-  const asignado = typeof contacto?.assigned_to === "string" ? contacto.assigned_to : null;
-  const recipients = handoffRecipientIds((members ?? []) as PushMember[], asignado);
-  if (recipients.length === 0) return;
-
-  const { data: subscriptions } = await supabase
-    .from("push_subscriptions")
-    .select("endpoint, p256dh, auth")
-    .eq("workspace_id", input.workspaceId)
-    .in("user_id", recipients);
-
-  if (!subscriptions?.length) return;
-
-  // En la zona del workspace y no en UTC: un turno corrido tres horas manda a
-  // preparar la reunión al horario equivocado.
-  const { data: workspace } = await supabase
-    .from("workspaces")
-    .select("timezone")
-    .eq("id", input.workspaceId)
-    .maybeSingle();
-
-  const zona = safeTimeZone(workspace?.timezone as string | undefined);
-  const inicio = new Date(cita.start_time as string);
-  const cuando = new Intl.DateTimeFormat("es-AR", {
-    timeZone: zona,
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(inicio);
-
-  const nombre =
-    typeof contacto?.name === "string" && contacto.name.trim() ? contacto.name : "Alguien";
-
-  await entregar(supabase, subscriptions as SubscriptionRow[], config, {
-    title: "Nueva cita",
-    body: `${nombre} reservó para el ${cuando}.`,
-    // La cita y no el contacto: dos reservas de la misma persona son dos
-    // avisos, y una que se reprograma pisa a la anterior en vez de apilarse.
-    tag: input.appointmentId,
-    url: "/?vista=agenda",
-  });
 }

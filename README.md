@@ -101,7 +101,34 @@ El sitio debe correr por HTTPS —localhost es la única excepción de los
 navegadores—. En iPhone/iPad hay que agregar el CRM a la pantalla de inicio y
 activar los avisos desde esa aplicación instalada.
 
+## Conexiones: OpenAI, YCloud y Zernio
+
+Las credenciales de los proveedores se cargan en el CRM, en **Configuración →
+Conexiones**, y no hace falta tocar Vercel ni volver a desplegar. Cada
+conexión es una lista de pasos con cada campo adentro del paso que lo pide, y
+muestra la URL del webhook lista para copiar.
+
+- **Cifradas.** Los secretos se guardan en la tabla `integraciones` cifrados
+  con AES-256-GCM (`src/lib/cifrado.ts`). La llave vive en Vercel, en
+  `INTEGRATIONS_ENCRYPTION_KEY`, nunca en la base: un volcado de la base sólo
+  muestra texto ilegible. Mientras falte, la pantalla trae una ya generada para
+  copiar y explica dónde pegarla. No se cambia después: lo guardado con la
+  anterior deja de poder leerse.
+- **Nunca vuelven al navegador.** La pantalla sólo sabe si cada secreto está
+  cargado; dejar el campo vacío al guardar conserva el que había.
+- **Sólo el servidor lee la tabla.** Tiene RLS sin políticas: la consulta la
+  service role desde las Server Actions y los webhooks.
+- **Las variables de entorno siguen valiendo**, campo por campo, para lo que no
+  se cargó en la pantalla. Lo cargado en la pantalla manda.
+
+Requiere correr `supabase/migrations/202610160001_integraciones.sql` (ya está
+dentro de `supabase/instalar.sql`).
+
 ## Conectar Zernio
+
+Se hace desde **Configuración → Conexiones → Zernio**. Lo de abajo explica qué
+pasa por debajo; las variables de entorno que nombra son la alternativa a esa
+pantalla.
 
 Zernio entrega los mensajes de WhatsApp, Instagram y Messenger por webhook.
 
@@ -121,6 +148,10 @@ Zernio entrega los mensajes de WhatsApp, Instagram y Messenger por webhook.
 4. **Cargar `ZERNIO_API_KEY`** para poder responder. Los dos sentidos usan credenciales distintas: recibir se valida con el secreto del webhook, responder se autentica con la API key. Recibir funciona sin la key.
 
 ## Conectar YCloud (WhatsApp oficial)
+
+Se hace desde **Configuración → Conexiones → YCloud**. Lo de abajo explica qué
+pasa por debajo; las variables de entorno que nombra son la alternativa a esa
+pantalla.
 
 YCloud es un proveedor oficial de Meta: el número se vincula en su panel, no
 por QR, y no hay riesgo de que WhatsApp lo bloquee. Convive con Zernio —cada
@@ -149,7 +180,7 @@ sumar YCloud no apaga nada de lo que ya funciona.
    la URL también autentica. Sirve para reenviar un evento a mano desde `curl`,
    donde no hay forma de firmarlo; no hace falta para la operación normal.
 
-`GET /api/webhooks/ycloud` dice qué variables faltan sin exponer sus valores.
+`GET /api/webhooks/ycloud` dice qué falta configurar sin exponer ningún valor.
 
 ### Qué se mapea
 
@@ -437,7 +468,7 @@ son únicos, así que correrla dos veces no duplica nada.
 
 ### Diagnóstico
 
-`GET /api/webhooks/zernio` informa qué variables de entorno están cargadas, si
+`GET /api/webhooks/zernio` informa qué credenciales están cargadas, si
 existen las tablas y cuándo llegó el último mensaje. Solo devuelve booleanos y
 conteos, nunca secretos.
 
@@ -630,7 +661,7 @@ leads es verde, más demora en contestar es rojo.
 ### Por dónde llegan los leads
 
 Una torta con el canal de entrada de cada lead: **WhatsApp**, **Instagram**,
-**Messenger**, **Reserva en Calendar**, **Chat de la web** y **Carga manual**.
+**Messenger**, **Chat de la web** y **Carga manual**.
 Arranca en el mes —y suma lo mismo que la tarjeta "Leads nuevos"— y tiene un
 botón para ver el **histórico** de los contactos activos. La elección se
 recuerda en el navegador.
@@ -648,7 +679,6 @@ que entró antes de la migración. Mira, en este orden:
 |---|---|
 | El primer mensaje lo mandó la persona y es anterior al alta: el chat la dio de alta | El canal de ese chat |
 | Tiene la etiqueta `web` | Chat de la web |
-| Tiene una cita de Calendar creada junto con el alta | Reserva en Calendar |
 | La persona escribió en los dos minutos siguientes al alta (relojes del proveedor) | El canal de ese chat |
 | Cualquier otro caso: alta a mano, importación, o un chat que abrió el equipo | Carga manual |
 

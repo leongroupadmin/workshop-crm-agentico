@@ -8,7 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { DEFAULT_REPLY_DELAY_SECONDS, errorDeDemora, errorDePrompt } from "@/lib/agent-limits";
 import { MAX_CAPTION, revisarAdjunto } from "@/lib/adjuntos";
 import { webmOpusAOgg } from "@/lib/audio/webm-a-ogg";
-import { DURACION_POR_OMISION_MINUTOS, leerEnlace } from "@/lib/calendar-citas";
+import { DURACION_POR_OMISION_MINUTOS, leerEnlace } from "@/lib/citas";
 import { etapaDeEntrada } from "@/lib/embudos";
 import { separarMarcas } from "@/lib/marcas-del-agente";
 import { INSTRUCCIONES_DE_ADJUNTOS, MEDIA_SALIENTE } from "@/lib/media-notes";
@@ -59,6 +59,14 @@ import {
 } from "@/lib/supabase/storage";
 import { errorDeContrasena } from "@/lib/password";
 import { getWorkspaceContext } from "@/lib/workspace";
+import { esIntegracion, type Integracion } from "@/lib/integraciones";
+import {
+  borrarIntegracion,
+  estadoDeLasIntegraciones,
+  guardarIntegracion,
+  problemaDeLaClave,
+  type EstadoDeIntegracion,
+} from "@/lib/integraciones-server";
 import { listYcloudTemplates } from "@/lib/ycloud-api";
 import {
   enviarAudio,
@@ -1020,10 +1028,8 @@ export async function updateOpportunityStage(input: {
 /**
  * Agenda una cita para un contacto del workspace.
  *
- * `enlace` es opcional y va a la misma columna que el de Calendar: es el que
- * sale en el `{link}` de los recordatorios. Una cita cargada acá no tiene el de
- * Calendar —nadie la reservó por ahí—, así que sin este campo el hueco salía
- * vacío en todos los avisos de las citas que carga el equipo.
+ * `enlace` es opcional: es el que sale en el `{link}` de los recordatorios.
+ * Sin este campo el hueco salía vacío en todos los avisos de las citas.
  */
 export async function createAppointment(input: {
   contactId: string;
@@ -1047,8 +1053,7 @@ export async function createAppointment(input: {
     return { ok: false, error: "La fecha no es válida." };
   }
 
-  // Sin hora de fin, la cita dura media hora, igual que un evento de Calendar
-  // que llega sin fin. El formulario no la pide: nadie agenda pensando en
+  // Sin hora de fin, la cita dura media hora. El formulario no la pide: nadie agenda pensando en
   // cuándo termina, y la columna no puede ir vacía —la base exige un fin
   // posterior al inicio—. Sigue aceptándose por si alguna vez la manda quien
   // sí la sabe.
@@ -1079,15 +1084,12 @@ export async function createAppointment(input: {
 }
 
 /**
- * Cambia el enlace de una cita cargada a mano.
+ * Cambia el enlace de una cita.
  *
  * Existe aparte del alta porque el enlace casi nunca está cuando se agenda: la
  * sala de Meet o el Zoom se crean después, y el recordatorio sale horas más
  * tarde. Sin esto habría que borrar la cita y volver a cargarla —perdiendo los
  * recordatorios ya anotados— para pegar un link.
- *
- * Las de Calendar no se tocan: ahí manda la sincronización y el próximo cambio
- * de horario pisaría lo que se escriba acá.
  */
 export async function setAppointmentLink(input: {
   id: string;
@@ -1107,15 +1109,11 @@ export async function setAppointmentLink(input: {
     .update({ calendar_link: enlace })
     .eq("id", input.id)
     .eq("workspace_id", scope.workspaceId)
-    .neq("origen", "calendar")
     .select("id");
 
   if (error) return { ok: false, error: error.message };
   if (!data?.length) {
-    return {
-      ok: false,
-      error: "No se pudo cambiar el enlace: la cita ya no está, o baja de Calendar y se cambia allá.",
-    };
+    return { ok: false, error: "No se pudo cambiar el enlace: la cita ya no está." };
   }
 
   revalidatePath("/");
@@ -1154,9 +1152,7 @@ export type CitaAgendada = {
   /** Para abrir la ficha del contacto —y su chat— desde la cita. */
   contactId: string;
   contactName: string;
-  /** `calendar` si bajó de Google Calendar; null si se cargó en el CRM. */
-  origen: string | null;
-  /** El enlace de la cita: el de Calendar, o el que se cargó a mano. */
+  /** El enlace de la reunión, si se cargó. */
   enlace: string | null;
   startTime: string;
   endTime: string;
@@ -1204,7 +1200,7 @@ export async function listAppointmentsByRange(input: {
   const { data, error } = await scope.supabase
     .from("appointments")
     .select(
-      "id, title, contact_id, origen, calendar_link, start_time, end_time, status, contacts!inner(name, archived_at)",
+      "id, title, contact_id, calendar_link, start_time, end_time, status, contacts!inner(name, archived_at)",
     )
     .eq("workspace_id", scope.workspaceId)
     .is("contacts.archived_at", null)
@@ -1232,7 +1228,6 @@ export async function listAppointmentsByRange(input: {
         title: row.title,
         contactId: row.contact_id,
         contactName: typeof name === "string" && name.length > 0 ? name : "Contacto sin nombre",
-        origen: (row.origen as string | null) ?? null,
         enlace: (row.calendar_link as string | null) ?? null,
         startTime: row.start_time,
         endTime: row.end_time,
@@ -3526,35 +3521,7 @@ export async function signOut(): Promise<void> {
 }
 
 /**
- * Saca una cita de la campana.
- *
- * El equivalente de `markConversationAttended` para las reservas: no cambia
- * nada de la cita, sólo anota que alguien ya la vio. Sin esto la campana
- * mostraría para siempre la misma reserva.
- */
-export async function markAppointmentSeen(input: { id: string }): Promise<ActionResult> {
-  const scope = await requireWorkspace();
-  if (!scope.ok) return { ok: false, error: scope.error };
-
-  const { error } = await scope.supabase
-    .from("appointments")
-    .update({ vista: true })
-    .eq("id", input.id)
-    .eq("workspace_id", scope.workspaceId);
-
-  if (error) return { ok: false, error: error.message };
-
-  revalidatePath("/");
-  return { ok: true };
-}
-
-/**
  * Borra una cita del CRM.
- *
- * No toca Google Calendar, y esa es la diferencia con cancelarla: cancelar es
- * afirmar que la reunión no va a pasar, y desde acá sería mentira porque el
- * evento sigue en el calendario del cliente. Borrar es decir "esto no lo sigo
- * en el CRM", que sí es una decisión de este lado.
  *
  * Se lleva sus recordatorios encolados por la clave foránea, así que no queda
  * ningún aviso apuntando a una cita que ya no existe.
@@ -3562,23 +3529,6 @@ export async function markAppointmentSeen(input: { id: string }): Promise<Action
 export async function deleteAppointment(input: { id: string }): Promise<ActionResult> {
   const scope = await requirePermission("gestionar_agenda");
   if (!scope.ok) return { ok: false, error: scope.error };
-
-  // Las de Calendar no se borran desde acá, por lo mismo que no se cancelan:
-  // el evento sigue en el calendario del cliente. Se comprueba en el servidor
-  // y no sólo escondiendo el botón, porque la pantalla no es el candado.
-  const { data: cita } = await scope.supabase
-    .from("appointments")
-    .select("origen")
-    .eq("id", input.id)
-    .eq("workspace_id", scope.workspaceId)
-    .maybeSingle();
-
-  if (cita?.origen === "calendar") {
-    return {
-      ok: false,
-      error: "Esta cita vino de Google Calendar: cancelala ahí y el CRM se actualiza solo.",
-    };
-  }
 
   const { error } = await scope.supabase
     .from("appointments")
@@ -3940,5 +3890,68 @@ export async function searchContacts(input: {
       phone: row.phone ?? null,
       email: row.email ?? null,
     })),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Conexiones
+//
+// Las credenciales de OpenAI, YCloud y Zernio. Una API key es la llave de la
+// cuenta en ese proveedor, así que sólo las toca un administrador —en esta
+// versión, toda cuenta lo es—. Los secretos nunca vuelven al navegador: el
+// panel sólo sabe si están cargados.
+// ---------------------------------------------------------------------------
+
+export type IntegracionesResult =
+  | {
+      ok: true;
+      integraciones: EstadoDeIntegracion[];
+      /** Por qué no se puede guardar todavía, o null si se puede. */
+      problemaDeLaClave: string | null;
+    }
+  | { ok: false; error: string };
+
+export async function loadIntegraciones(): Promise<IntegracionesResult> {
+  const scope = await requireAdmin("ver las conexiones");
+  if (!scope.ok) return { ok: false, error: scope.error };
+
+  return {
+    ok: true,
+    integraciones: await estadoDeLasIntegraciones(),
+    problemaDeLaClave: problemaDeLaClave(),
+  };
+}
+
+export async function saveIntegracion(input: {
+  integracion: string;
+  valores: Record<string, string>;
+}): Promise<ActionResult> {
+  const scope = await requireAdmin("cambiar las conexiones");
+  if (!scope.ok) return { ok: false, error: scope.error };
+  if (!esIntegracion(input.integracion)) return { ok: false, error: "Conexión inválida." };
+
+  const guardado = await guardarIntegracion({
+    integracion: input.integracion,
+    entrada: input.valores ?? {},
+    userId: scope.userId,
+  });
+  if (!guardado.ok) return guardado;
+
+  revalidatePath("/");
+  return { ok: true };
+}
+
+export async function deleteIntegracion(input: { integracion: string }): Promise<ActionResult> {
+  const scope = await requireAdmin("cambiar las conexiones");
+  if (!scope.ok) return { ok: false, error: scope.error };
+  if (!esIntegracion(input.integracion)) return { ok: false, error: "Conexión inválida." };
+
+  const borrado = await borrarIntegracion(input.integracion as Integracion);
+  if (!borrado.ok) return borrado;
+
+  revalidatePath("/");
+  return {
+    ok: true,
+    warning: "Desconectada. Si hay variables de entorno para este proveedor en Vercel, se vuelven a usar esas.",
   };
 }

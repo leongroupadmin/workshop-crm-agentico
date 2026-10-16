@@ -55,7 +55,7 @@ test("la regla apagada no aplica", () => {
 });
 
 test("sin tarjeta en el embudo no aplica ninguna regla con origen", () => {
-  // El que reservó por Calendar no tiene oportunidad: su etapa es null.
+  // El que todavía no entró al embudo no tiene oportunidad: su etapa es null.
   const reglas = [regla({ desdeStageId: NUEVO }), regla({ id: "r2", stageId: CALIFICADO })];
   const aplicables = reglasAplicables(reglas, null);
   assert.deepEqual(

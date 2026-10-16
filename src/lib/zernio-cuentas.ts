@@ -111,7 +111,7 @@ export function explicarReconciliacion(resultado: Reconciliacion): string {
     case "sin-cambios":
       return "Zernio sigue reportando esta misma cuenta, así que no es un id viejo: a la API key le falta permiso sobre ella.";
     case "sin-conversacion":
-      return "Zernio no lista esta conversación entre las suyas: lo más probable es que la ZERNIO_API_KEY sea de otro perfil de Zernio.";
+      return "Zernio no lista esta conversación entre las suyas: lo más probable es que la API key cargada en Conexiones sea de otro perfil de Zernio.";
     case "sin-listado":
       return `Tampoco se pudieron listar las conversaciones de Zernio: ${resultado.error}`;
   }

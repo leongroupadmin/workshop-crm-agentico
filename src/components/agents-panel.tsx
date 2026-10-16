@@ -465,8 +465,8 @@ function AgentForm({
                     className={`${INPUT_CLASS} mt-2`}
                   />
                   <p className="mt-1 text-xs text-neutral-500">
-                    No se pudo consultar la lista de modelos: revisá que OPENAI_API_KEY esté
-                    cargada en el entorno.
+                    No se pudo consultar la lista de modelos: revisá que la key de OpenAI esté
+                    cargada en Configuración → Conexiones.
                   </p>
                 </>
               )}

@@ -12,7 +12,7 @@
 import type { Channel } from "@/types/database";
 
 /** Los tres chats, más lo que entra sin chat de por medio. */
-export type CanalDeEntrada = Channel | "calendar" | "web" | "manual";
+export type CanalDeEntrada = Channel | "web" | "manual";
 
 /** Cuántos leads llegaron por un canal: desde siempre y en lo que va del mes. */
 export type LeadsDeUnCanal = { canal: CanalDeEntrada; total: number; delMes: number };
@@ -29,7 +29,6 @@ export const CANALES_DE_ENTRADA: CanalDeEntrada[] = [
   "whatsapp",
   "instagram",
   "messenger",
-  "calendar",
   "web",
   "manual",
 ];
@@ -38,7 +37,6 @@ export const ETIQUETAS_DE_ENTRADA: Record<CanalDeEntrada, string> = {
   whatsapp: "WhatsApp",
   instagram: "Instagram",
   messenger: "Messenger",
-  calendar: "Reserva en Calendar",
   web: "Chat de la web",
   manual: "Carga manual",
 };

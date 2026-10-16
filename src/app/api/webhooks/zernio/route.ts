@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { procesarEntrante, type MensajeEntrante } from "@/lib/entrante";
+import { credenciales, estaConfigurada } from "@/lib/integraciones-server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import {
   readZernioHeaders,
@@ -41,14 +42,12 @@ const rejected = (reason: string, receivedHeaders: string[]) => {
 };
 
 export async function POST(request: NextRequest) {
-  const secret = process.env.ZERNIO_WEBHOOK_SECRET;
-  if (!secret) {
-    console.error("[zernio] falta ZERNIO_WEBHOOK_SECRET");
-    return NextResponse.json(
-      { error: "Falta la variable ZERNIO_WEBHOOK_SECRET en el entorno." },
-      { status: 500 },
-    );
+  const conexion = await credenciales("zernio", ["webhook_secret"]);
+  if (!conexion.ok) {
+    console.error("[zernio]", conexion.error);
+    return NextResponse.json({ error: conexion.error }, { status: 500 });
   }
+  const secret = conexion.valores.webhook_secret;
 
   // El cuerpo crudo es lo que se firma: no volver a serializarlo.
   const rawBody = await request.text();
@@ -69,13 +68,13 @@ export async function POST(request: NextRequest) {
 
   if (!signed && !tokenized) {
     if (signature) {
-      return rejected("la firma no coincide con ZERNIO_WEBHOOK_SECRET", receivedHeaders);
+      return rejected("la firma no coincide con el secreto del webhook de Zernio", receivedHeaders);
     }
     if (token) {
-      return rejected("el token de la URL no coincide con ZERNIO_WEBHOOK_SECRET", receivedHeaders);
+      return rejected("el token de la URL no coincide con el secreto del webhook de Zernio", receivedHeaders);
     }
     return rejected(
-      "Zernio no mandó firma ni token. Agregá ?token=<ZERNIO_WEBHOOK_SECRET> al final de la URL del webhook.",
+      "Zernio no mandó firma ni token. Copiá la URL del webhook desde Configuración → Conexiones: ya trae el secreto adentro.",
       receivedHeaders,
     );
   }
@@ -166,11 +165,12 @@ function aMensajeEntrante(payload: ZernioMessagePayload): MensajeEntrante | null
  */
 export async function GET() {
   const checks: Record<string, unknown> = {
-    // Recibir solo depende del secreto; la API key es para responder.
-    ZERNIO_WEBHOOK_SECRET: Boolean(process.env.ZERNIO_WEBHOOK_SECRET),
-    ZERNIO_API_KEY: Boolean(process.env.ZERNIO_API_KEY),
-    // Sin esta, la IA no puede contestar sola: el webhook no ve la key del navegador.
-    OPENAI_API_KEY: Boolean(process.env.OPENAI_API_KEY),
+    // Recibir solo depende del secreto; la API key es para responder. Cuenta lo
+    // cargado en Configuración → Conexiones y las variables de entorno.
+    secreto_del_webhook: await estaConfigurada("zernio", ["webhook_secret"]),
+    api_key_de_zernio: await estaConfigurada("zernio", ["api_key"]),
+    // Sin esta, la IA no puede contestar sola.
+    api_key_de_openai: await estaConfigurada("openai", ["api_key"]),
     SUPABASE_SERVICE_ROLE_KEY: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
     NEXT_PUBLIC_SUPABASE_URL: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
   };

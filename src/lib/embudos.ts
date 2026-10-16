@@ -53,9 +53,8 @@ export async function etapaDeEntrada(
  *
  * Un lead que no está en el embudo no existe para el equipo: el tablero es
  * donde se mira quién está pendiente, y uno que no aparece ahí no lo persigue
- * nadie. Por eso entra igual el que escribió por WhatsApp que el que reservó
- * una llamada por Calendar —este último, si algo, más caliente— que el que
- * alguien cargó a mano.
+ * nadie. Por eso entra igual el que escribió por WhatsApp que el que alguien
+ * cargó a mano.
  *
  * Devuelve la etapa en la que quedó, o null si ya tenía una o si no se pudo.
  * Es idempotente: llamarla de nuevo sobre el mismo contacto no crea una

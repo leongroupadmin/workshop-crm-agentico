@@ -1,5 +1,6 @@
 import "server-only";
 
+import { credenciales } from "@/lib/integraciones-server";
 import {
   causaDelRechazo,
   describeError,
@@ -17,6 +18,24 @@ import {
  */
 
 const DEFAULT_BASE_URL = "https://zernio.com/api";
+
+/**
+ * La API key y la URL base, de Configuración → Conexiones o del entorno.
+ *
+ * Devuelve el error ya armado para quien llama: "falta la API key de …,
+ * cargala en Conexiones" es lo único que hay que decirle a quien la ve.
+ */
+async function conectar(): Promise<
+  { ok: true; apiKey: string; baseUrl: string } | { ok: false; error: string }
+> {
+  const cred = await credenciales("zernio", ["api_key"]);
+  if (!cred.ok) return cred;
+  return {
+    ok: true,
+    apiKey: cred.valores.api_key,
+    baseUrl: (cred.valores.base_url || DEFAULT_BASE_URL).replace(/\/$/, ""),
+  };
+}
 
 export type SendResult =
   | { ok: true; messageId?: string }
@@ -41,12 +60,9 @@ export async function sendZernioMessage(input: {
   accountId: string;
   text: string;
 }): Promise<SendResult> {
-  const apiKey = process.env.ZERNIO_API_KEY;
-  if (!apiKey) {
-    return { ok: false, error: "Falta la variable ZERNIO_API_KEY en el entorno." };
-  }
-
-  const baseUrl = (process.env.ZERNIO_API_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
+  const conexion = await conectar();
+  if (!conexion.ok) return conexion;
+  const { apiKey, baseUrl } = conexion;
   const url = `${baseUrl}/v1/inbox/conversations/${encodeURIComponent(input.conversationId)}/messages`;
 
   let response: Response;
@@ -107,12 +123,9 @@ export async function sendZernioAttachment(input: {
   voiceNote?: boolean;
   caption?: string;
 }): Promise<SendResult> {
-  const apiKey = process.env.ZERNIO_API_KEY;
-  if (!apiKey) {
-    return { ok: false, error: "Falta la variable ZERNIO_API_KEY en el entorno." };
-  }
-
-  const baseUrl = (process.env.ZERNIO_API_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
+  const conexion = await conectar();
+  if (!conexion.ok) return conexion;
+  const { apiKey, baseUrl } = conexion;
   const url = `${baseUrl}/v1/inbox/conversations/${encodeURIComponent(input.conversationId)}/messages`;
 
   let response: Response;
@@ -185,10 +198,9 @@ export type ListResult =
  * tenga el mensaje, o que lo tenga y no esté disparando el webhook.
  */
 export async function listZernioConversations(limit = 20): Promise<ListResult> {
-  const apiKey = process.env.ZERNIO_API_KEY;
-  if (!apiKey) return { ok: false, error: "Falta la variable ZERNIO_API_KEY en el entorno." };
-
-  const baseUrl = (process.env.ZERNIO_API_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
+  const conexion = await conectar();
+  if (!conexion.ok) return conexion;
+  const { apiKey, baseUrl } = conexion;
 
   let response: Response;
   try {
@@ -257,10 +269,9 @@ export async function listZernioMessages(
   accountId: string,
   limit = 50,
 ): Promise<HistoryResult> {
-  const apiKey = process.env.ZERNIO_API_KEY;
-  if (!apiKey) return { ok: false, error: "Falta la variable ZERNIO_API_KEY en el entorno." };
-
-  const baseUrl = (process.env.ZERNIO_API_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
+  const conexion = await conectar();
+  if (!conexion.ok) return conexion;
+  const { apiKey, baseUrl } = conexion;
   const params = new URLSearchParams({ accountId, limit: String(limit), sortOrder: "desc" });
   const url = `${baseUrl}/v1/inbox/conversations/${encodeURIComponent(conversationId)}/messages?${params}`;
 

@@ -160,9 +160,8 @@ export async function procesarEntrante(
       //
       // Hasta acá los perdedores devolvían error y dejaban su contacto tirado:
       // sin chat, pero con su tarjeta en el embudo. La misma persona aparecía
-      // dos o tres veces, y meses después una reserva de Calendar podía
-      // engancharse a la ficha huérfana y dejar el chat de un lado y la cita
-      // del otro.
+      // dos o tres veces, y una cita podía engancharse a la ficha huérfana y
+      // dejar el chat de un lado y la cita del otro.
       //
       // Así que el perdedor se suma a la conversación que ganó, en vez de
       // fallar, y se lleva puesto el contacto que acababa de crear.
@@ -472,8 +471,8 @@ async function findByIdentity(
  * contacto a mano escribe el numero como se lo dictaron, sin el 9 argentino.
  *
  * Con la igualdad exacta, cada una de esas formas era una persona distinta: el
- * que reservo por Calendar y despues contesto el recordatorio terminaba con dos
- * fichas, dos chats y el historial partido al medio.
+ * que cargaron a mano y despues escribio por WhatsApp terminaba con dos fichas,
+ * dos chats y el historial partido al medio.
  */
 async function findByPhone(
   supabase: Supabase,

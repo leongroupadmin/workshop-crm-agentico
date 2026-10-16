@@ -16,6 +16,7 @@ import {
   updateWorkspaceTimezone,
 } from "@/app/actions";
 import { useAccess } from "@/components/access";
+import { IntegracionesCard } from "@/components/integraciones-panel";
 import { Card } from "@/components/ui";
 import { TIMEZONE_OPTIONS, longDateInZone } from "@/lib/fechas";
 
@@ -26,7 +27,8 @@ import { TIMEZONE_OPTIONS, longDateInZone } from "@/lib/fechas";
  * Se sacó cuando apareció la key del servidor: eran dos credenciales en dos
  * lugares y sólo una servía para que la IA contestara sola, lo que llevaba a
  * cargar la equivocada y no entender por qué no pasaba nada. Ahora hay una
- * sola, en el entorno, y esta pantalla se limita a decir si está funcionando.
+ * sola, que se carga en Conexiones y se guarda cifrada en el servidor; la
+ * tarjeta de arriba se limita a decir si está funcionando.
  */
 export function SettingsPanel({ timezone }: { timezone: string }) {
   const [status, setStatus] = useState<
@@ -86,12 +88,14 @@ export function SettingsPanel({ timezone }: { timezone: string }) {
           <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-500/30 dark:bg-red-500/10">
             <p className="text-sm text-red-700 dark:text-red-300">{status.message}</p>
             <p className="mt-2 text-sm text-red-700/80 dark:text-red-300/80">
-              Cargá <code className="font-mono">OPENAI_API_KEY</code> en las variables de entorno
-              del servidor y reiniciá el CRM.
+              Cargá tu key de OpenAI en <strong>Conexiones</strong>, más abajo en esta misma
+              pantalla.
             </p>
           </div>
         )}
       </Card>
+
+      <IntegracionesCard />
 
       <TimezoneCard timezone={timezone} />
 
@@ -101,10 +105,10 @@ export function SettingsPanel({ timezone }: { timezone: string }) {
         <h2 className="font-semibold">Cómo funciona la IA</h2>
         <ul className="mt-3 space-y-2 text-sm text-neutral-500">
           <li>
-            <strong className="text-neutral-700 dark:text-neutral-300">Una sola key, en el
-            servidor.</strong>{" "}
-            Nadie carga credenciales en el navegador. La misma key paga las respuestas automáticas
-            y las sugeridas.
+            <strong className="text-neutral-700 dark:text-neutral-300">Una sola key, guardada
+            cifrada.</strong>{" "}
+            Se carga una vez en Conexiones y nunca vuelve a mostrarse. La misma key paga las
+            respuestas automáticas y las sugeridas.
           </li>
           <li>
             <strong className="text-neutral-700 dark:text-neutral-300">Dos niveles para

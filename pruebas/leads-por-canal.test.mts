@@ -94,7 +94,7 @@ test("las tajadas cubren la vuelta entera, sin huecos", () => {
     leerLeadsPorCanal([
       { canal: "whatsapp", total: 1, del_tramo: 1 },
       { canal: "instagram", total: 1, del_tramo: 1 },
-      { canal: "calendar", total: 1, del_tramo: 1 },
+      { canal: "messenger", total: 1, del_tramo: 1 },
     ]),
     "mes",
   );

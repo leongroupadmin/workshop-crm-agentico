@@ -1,10 +1,11 @@
 import "server-only";
 
+import { credenciales } from "@/lib/integraciones-server";
 import { razonaAntesDeEscribir, TECHO_RESPUESTA, techoDelModelo } from "@/lib/modelos-ia";
 
 /**
- * Cliente de OpenAI. Es el único: la key vive en `OPENAI_API_KEY` y nunca sale
- * del servidor.
+ * Cliente de OpenAI. Es el único: la key se carga en Configuración → Conexiones
+ * (o en `OPENAI_API_KEY`), se guarda cifrada y nunca sale del servidor.
  *
  * Hubo un momento en que cada usuario cargaba la suya en el navegador, pero eso
  * dejaba dos keys en dos lugares y ninguna servía para lo mismo: el webhook
@@ -97,8 +98,9 @@ export async function completeChatServer(input: {
   model: string;
   messages: ChatTurn[];
 }): Promise<CompletionResult> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return { ok: false, error: "Falta la variable OPENAI_API_KEY en el entorno." };
+  const cred = await credenciales("openai", ["api_key"]);
+  if (!cred.ok) return cred;
+  const apiKey = cred.valores.api_key;
 
   const razona = razonaAntesDeEscribir(input.model);
   const techo = techoDelModelo(input.model);
@@ -179,8 +181,9 @@ export async function completeWithToolsServer(input: {
   herramientas: Herramienta[];
   ejecutar: (llamada: Llamada) => Promise<unknown>;
 }): Promise<CompletionResult> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return { ok: false, error: "Falta la variable OPENAI_API_KEY en el entorno." };
+  const cred = await credenciales("openai", ["api_key"]);
+  if (!cred.ok) return cred;
+  const apiKey = cred.valores.api_key;
 
   const tools = input.herramientas.map((item) => ({
     type: "function" as const,
@@ -314,10 +317,13 @@ async function downloadMedia(
   let media: Response;
   try {
     media = await fetch(url);
-    if ((media.status === 401 || media.status === 403) && process.env.ZERNIO_API_KEY) {
-      media = await fetch(url, {
-        headers: { Authorization: `Bearer ${process.env.ZERNIO_API_KEY}` },
-      });
+    if (media.status === 401 || media.status === 403) {
+      const zernio = await credenciales("zernio", ["api_key"]);
+      if (zernio.ok) {
+        media = await fetch(url, {
+          headers: { Authorization: `Bearer ${zernio.valores.api_key}` },
+        });
+      }
     }
   } catch (error) {
     console.error("[ia] no se pudo descargar el adjunto:", error);
@@ -345,8 +351,9 @@ async function downloadMedia(
 export async function transcribeAudio(
   url: string,
 ): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return { ok: false, error: "Falta la variable OPENAI_API_KEY en el entorno." };
+  const cred = await credenciales("openai", ["api_key"]);
+  if (!cred.ok) return cred;
+  const apiKey = cred.valores.api_key;
 
   const downloaded = await downloadMedia(url);
   if (!downloaded.ok) return downloaded;
@@ -393,8 +400,9 @@ export async function transcribeAudio(
 export async function describeImage(
   url: string,
 ): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return { ok: false, error: "Falta la variable OPENAI_API_KEY en el entorno." };
+  const cred = await credenciales("openai", ["api_key"]);
+  if (!cred.ok) return cred;
+  const apiKey = cred.valores.api_key;
 
   const downloaded = await downloadMedia(url);
   if (!downloaded.ok) return downloaded;
@@ -462,8 +470,9 @@ const NOT_CHAT = /audio|realtime|image|tts|whisper|embedding|moderation|transcri
 export async function listChatModelsServer(): Promise<
   { ok: true; models: string[] } | { ok: false; error: string }
 > {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return { ok: false, error: "Falta la variable OPENAI_API_KEY en el entorno." };
+  const cred = await credenciales("openai", ["api_key"]);
+  if (!cred.ok) return cred;
+  const apiKey = cred.valores.api_key;
 
   let response: Response;
   try {

@@ -3,7 +3,6 @@
 import {
   Bell,
   BellRing,
-  CalendarPlus,
   Check,
   ListTodo,
   Send,
@@ -14,13 +13,12 @@ import {
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import {
-  markAppointmentSeen,
   markConversationAttended,
   markConversationRead,
   markTasksSeen,
 } from "@/app/actions";
 import { CHANNEL_LABELS, avatarColor, dateTime, initials } from "@/components/ui";
-import type { ChatSinLeerRow, CitaNuevaRow, HandoffRow } from "@/lib/crm-data";
+import type { ChatSinLeerRow, HandoffRow } from "@/lib/crm-data";
 import { masNuevasPrimero } from "@/lib/novedades";
 import type { TareaRow } from "@/lib/tareas";
 import { usePreference } from "@/lib/use-preference";
@@ -54,7 +52,6 @@ async function saveSubscription(subscription: PushSubscription) {
 
 /** Un renglón de la campana, sea del tipo que sea. */
 type Novedad =
-  | { tipo: "cita"; cuando: string; cita: CitaNuevaRow }
   | { tipo: "tarea"; cuando: string | null; tarea: TareaRow }
   | { tipo: "derivacion"; cuando: string; handoff: HandoffRow }
   | { tipo: "mensaje"; cuando: string; chat: ChatSinLeerRow };
@@ -98,7 +95,7 @@ function bip() {
 }
 
 /**
- * La campana del header: derivaciones, mensajes sin leer, reservas y tareas.
+ * La campana del header: derivaciones, mensajes sin leer y tareas.
  *
  * Los mensajes sin leer están acá y también en el globito de "Conversaciones",
  * pero la campana no los mezcla con las derivaciones: un mensaje sin leer es
@@ -108,24 +105,19 @@ function bip() {
 export function NotificationsBell({
   handoffs,
   chatsSinLeer,
-  citasNuevas,
   tareasNuevas,
   timezone,
   onOpenChat,
-  onOpenLead,
   onOpenTareas,
 }: {
   handoffs: HandoffRow[];
   /** Chats con mensajes que nadie leyó, sin contar los derivados. */
   chatsSinLeer: ChatSinLeerRow[];
-  /** Reservas de Calendar que todavía nadie miró. */
-  citasNuevas: CitaNuevaRow[];
   /** Tareas que te pasó otra persona y todavía no viste. */
   tareasNuevas: TareaRow[];
   /** La zona del workspace: el turno se lee con la misma hora que el recordatorio. */
   timezone: string;
   onOpenChat: (handoff: HandoffRow) => void;
-  onOpenLead: (contactId: string) => void;
   onOpenTareas: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -271,7 +263,6 @@ export function NotificationsBell({
   const hayAlgo =
     handoffs.length > 0 ||
     chatsSinLeer.length > 0 ||
-    citasNuevas.length > 0 ||
     tareasNuevas.length > 0;
 
   // El número cuenta chats: los derivados y los que tienen mensajes sin leer.
@@ -281,7 +272,6 @@ export function NotificationsBell({
   // avisos. Antes iban en bloques por tipo y lo nuevo podía quedar al fondo.
   const novedades = masNuevasPrimero<Novedad>(
     [
-      ...citasNuevas.map((cita) => ({ tipo: "cita" as const, cuando: cita.createdAt, cita })),
       ...tareasNuevas.map((tarea) => ({
         tipo: "tarea" as const,
         cuando: tarea.actualizadaAt,
@@ -311,21 +301,12 @@ export function NotificationsBell({
     onOpenChat(item);
   };
 
-  const verCita = (item: CitaNuevaRow) => {
-    setOpen(false);
-    onOpenLead(item.contactId);
-    startTransition(async () => {
-      await markAppointmentSeen({ id: item.appointmentId });
-    });
-  };
-
   const atenderTodas = () => {
     setOpen(false);
     startTransition(async () => {
       await Promise.all([
         ...handoffs.map((item) => markConversationAttended({ id: item.conversationId })),
         ...chatsSinLeer.map((item) => markConversationRead({ id: item.conversationId })),
-        ...citasNuevas.map((item) => markAppointmentSeen({ id: item.appointmentId })),
         markTasksSeen({ ids: tareasNuevas.map((item) => item.id) }),
       ]);
     });
@@ -445,45 +426,12 @@ export function NotificationsBell({
             <div className="flex-1 overflow-y-auto">
               {!hayAlgo ? (
                 <p className="px-4 py-10 text-center text-sm text-neutral-500">
-                  Todo al día. Acá aparecen los mensajes nuevos, las reservas, las tareas que
-                  te pasan y los chats que la IA no pudo resolver.
+                  Todo al día. Acá aparecen los mensajes nuevos, las tareas que te pasan y
+                  los chats que la IA no pudo resolver.
                 </p>
               ) : (
                 <ul className="divide-y divide-neutral-100 dark:divide-white/10">
                   {novedades.map((novedad) => {
-                    if (novedad.tipo === "cita") {
-                      const item = novedad.cita;
-                      return (
-                        <li key={`cita-${item.appointmentId}`}>
-                          <button
-                            onClick={() => verCita(item)}
-                            className="flex w-full cursor-pointer gap-3 px-4 py-3 text-left transition-colors hover:bg-neutral-50 dark:hover:bg-white/5"
-                          >
-                            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
-                              <CalendarPlus className="size-4" />
-                            </span>
-                            <span className="min-w-0 flex-1">
-                              <span className="flex items-baseline gap-2">
-                                <span className="truncate text-sm font-medium">
-                                  {item.contactName} reservó una cita
-                                </span>
-                                <Hace iso={item.createdAt} />
-                              </span>
-                              <span className="block truncate text-xs text-neutral-500">
-                                {item.title}
-                              </span>
-                              <span
-                                className="block text-xs text-neutral-400"
-                                suppressHydrationWarning
-                              >
-                                Turno: {dateTime(item.startTime, timezone)}
-                              </span>
-                            </span>
-                          </button>
-                        </li>
-                      );
-                    }
-
                     if (novedad.tipo === "tarea") {
                       const item = novedad.tarea;
                       return (

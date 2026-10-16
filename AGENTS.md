@@ -23,7 +23,9 @@ que te cuente o te pase una captura del error antes de seguir.
 - El SQL de la base es `supabase/instalar.sql`, un solo archivo para pegar en el
   SQL Editor de Supabase. No le hagas pegar las migraciones de a una.
 - **Nunca le pidas que pegue claves en el chat** (service_role, OpenAI, YCloud,
-  Zernio). Se cargan directamente en Vercel, en Environment Variables.
+  Zernio). Las de Supabase y `INTEGRATIONS_ENCRYPTION_KEY` se cargan en Vercel,
+  en Environment Variables; las de OpenAI, YCloud y Zernio, en el CRM, en
+  **Configuración → Conexiones**, que las guarda cifradas.
 - No hay roles: toda cuenta creada en Supabase entra como administradora. Por eso
   insistí en que deje **apagado** "Allow new users to sign up".
 - Siempre un proyecto de Supabase **nuevo**, nunca el de otra instalación.

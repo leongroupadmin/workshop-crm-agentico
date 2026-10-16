@@ -442,11 +442,9 @@ function Workspace({
             <NotificationsBell
               handoffs={data.handoffs}
               chatsSinLeer={data.chatsSinLeer}
-              citasNuevas={data.citasNuevas}
               tareasNuevas={data.tareas.filter((tarea) => !tarea.vista)}
               timezone={data.timezone}
               onOpenChat={abrirChat}
-              onOpenLead={setOpenLead}
               onOpenTareas={() => selectView("Tareas")}
             />
             <AccountMenu email={context.userEmail} />
@@ -903,7 +901,6 @@ const TONO_DE_ENTRADA: Record<CanalDeEntrada, { porcion: string; punto: string }
   whatsapp: { porcion: "fill-[#1baf7a] dark:fill-[#1f9d55]", punto: "bg-[#1baf7a] dark:bg-[#1f9d55]" },
   instagram: { porcion: "fill-[#d6338a] dark:fill-[#c8418f]", punto: "bg-[#d6338a] dark:bg-[#c8418f]" },
   messenger: { porcion: "fill-[#2a78d6] dark:fill-[#4a90e8]", punto: "bg-[#2a78d6] dark:bg-[#4a90e8]" },
-  calendar: { porcion: "fill-[#eb6834] dark:fill-[#e0662f]", punto: "bg-[#eb6834] dark:bg-[#e0662f]" },
   web: { porcion: "fill-[#4a3aa7] dark:fill-[#6a3fc4]", punto: "bg-[#4a3aa7] dark:bg-[#6a3fc4]" },
   manual: { porcion: "fill-[#a8a29e] dark:fill-[#78716c]", punto: "bg-[#a8a29e] dark:bg-[#78716c]" },
 };

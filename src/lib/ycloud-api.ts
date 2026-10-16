@@ -1,5 +1,6 @@
 import "server-only";
 
+import { credenciales } from "@/lib/integraciones-server";
 import { normalizarPlantillas, type ComponenteSaliente, type Plantilla } from "@/lib/plantillas";
 import type { SendResult } from "@/lib/zernio-api";
 
@@ -7,7 +8,7 @@ import type { SendResult } from "@/lib/zernio-api";
  * Cliente REST de YCloud, para el sentido saliente.
  *
  * El webhook no necesita esto: los mensajes entrantes los empuja YCloud y se
- * autentican con YCLOUD_WEBHOOK_SECRET. La API key hace falta solo para
+ * autentican con el secreto del webhook. La API key hace falta solo para
  * responder.
  *
  * El contrato —`X-API-Key`, base `https://api.ycloud.com/v2`, `from`/`to` en
@@ -18,6 +19,24 @@ import type { SendResult } from "@/lib/zernio-api";
  */
 
 const DEFAULT_BASE_URL = "https://api.ycloud.com/v2";
+
+/**
+ * La API key y la URL base, de Configuración → Conexiones o del entorno.
+ *
+ * Devuelve el error ya armado para quien llama: "falta la API key de …,
+ * cargala en Conexiones" es lo único que hay que decirle a quien la ve.
+ */
+async function conectar(): Promise<
+  { ok: true; apiKey: string; baseUrl: string } | { ok: false; error: string }
+> {
+  const cred = await credenciales("ycloud", ["api_key"]);
+  if (!cred.ok) return cred;
+  return {
+    ok: true,
+    apiKey: cred.valores.api_key,
+    baseUrl: (cred.valores.base_url || DEFAULT_BASE_URL).replace(/\/$/, ""),
+  };
+}
 
 type Destino = {
   /** Nuestro número, en E.164. Es la cuenta de la conversación. */
@@ -78,12 +97,9 @@ export async function sendYcloudMedia(
 }
 
 async function post(body: Record<string, unknown>): Promise<SendResult> {
-  const apiKey = process.env.YCLOUD_API_KEY;
-  if (!apiKey) {
-    return { ok: false, error: "Falta la variable YCLOUD_API_KEY en el entorno." };
-  }
-
-  const baseUrl = (process.env.YCLOUD_API_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
+  const conexion = await conectar();
+  if (!conexion.ok) return conexion;
+  const { apiKey, baseUrl } = conexion;
 
   let response: Response;
   try {
@@ -166,12 +182,9 @@ export async function listYcloudTemplates(): Promise<PlantillasResult> {
 export async function pedirPlantillasCrudas(): Promise<
   { ok: true; cuerpo: unknown } | { ok: false; error: string }
 > {
-  const apiKey = process.env.YCLOUD_API_KEY;
-  if (!apiKey) {
-    return { ok: false, error: "Falta la variable YCLOUD_API_KEY en el entorno." };
-  }
-
-  const baseUrl = (process.env.YCLOUD_API_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
+  const conexion = await conectar();
+  if (!conexion.ok) return conexion;
+  const { apiKey, baseUrl } = conexion;
 
   let response: Response;
   try {

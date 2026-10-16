@@ -289,7 +289,7 @@ test("el formato real se reconoce como esquema con marca de tiempo", () => {
     1787061200 * 1000,
   );
   assert.equal(resultado.ok, false);
-  assert.match(resultado.motivo, /no coincide con YCLOUD_WEBHOOK_SECRET/);
+  assert.match(resultado.motivo, /no coincide con el secreto del webhook de YCloud/);
 });
 
 /**

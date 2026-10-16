@@ -353,7 +353,7 @@ function AppointmentItem({
   const [pending, startTransition] = useTransition();
   const [confirmando, setConfirmando] = useState(false);
   const [editandoEnlace, setEditandoEnlace] = useState(false);
-  const puedeEditarEnlace = access.can("gestionar_agenda") && appointment.origen !== "calendar";
+  const puedeEditarEnlace = access.can("gestionar_agenda");
 
   const borrar = () => {
     startTransition(async () => {
@@ -414,9 +414,8 @@ function AppointmentItem({
           <span className="sr-only">Abrir el chat</span>
         </button>
 
-        {/* El enlace de la reunión. En una de Calendar es de sólo lectura —lo manda la
-            sincronización—; en una cargada a mano se edita acá, porque la sala de
-            Meet casi nunca existe todavía cuando se agenda. */}
+        {/* El enlace de la reunión se edita acá, porque la sala de Meet casi nunca
+            existe todavía cuando se agenda. */}
         {puedeEditarEnlace ? (
           <button
             type="button"
@@ -455,11 +454,7 @@ function AppointmentItem({
         >
           {STATUS_LABELS[appointment.status]}
         </span>
-        {/* Realizada y vuelta atrás, nada más.
-            No se cancela desde acá: la cita vive en Google Calendar y se cancela
-            ahí, que es de donde el CRM se entera. Un botón que la cancelara sólo
-            de este lado dejaría las dos agendas diciendo cosas distintas, y la de
-            Calendar —la que mira el cliente— seguiría en pie.
+        {/* Realizada y vuelta atrás.
             "Realizada" es sólo un registro, así que tiene que poder deshacerse:
             marcar la equivocada de una lista de diez es cuestión de tiempo. */}
         {access.can("gestionar_agenda") && appointment.status === "scheduled" && (
@@ -486,10 +481,7 @@ function AppointmentItem({
           </button>
         )}
 
-        {/* Sólo las cargadas a mano. Una de Calendar se cancela allá, que es de
-            donde el CRM se entera: borrarla de este lado dejaría al cliente con
-            la reunión en su calendario y a nadie mirándola. */}
-        {access.can("gestionar_agenda") && appointment.origen !== "calendar" && (
+        {access.can("gestionar_agenda") && (
           <button
             disabled={pending}
             onClick={() => setConfirmando(true)}
@@ -709,8 +701,6 @@ function AppointmentModal({
           className={`${INPUT_CLASS} mt-2`}
         />
 
-        {/* Una cita cargada acá no baja de Calendar, así que el enlace de la
-            reunión se pega a mano. */}
         <label className="mt-4 block text-sm font-medium" htmlFor="appointment-link">
           Enlace <span className="font-normal text-neutral-500">(opcional)</span>
         </label>

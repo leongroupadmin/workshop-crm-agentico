@@ -161,31 +161,11 @@ export type AppointmentRow = {
   /** Para abrir la ficha del contacto —y su chat— desde la cita. */
   contactId: string;
   contactName: string;
-  /** `calendar` si bajó de Google Calendar; null si se cargó en el CRM. */
-  origen: string | null;
-  /** El enlace de la cita: el de Calendar, o el que se cargó a mano. */
+  /** El enlace de la reunión, si se cargó. */
   enlace: string | null;
   startTime: string;
   endTime: string;
   status: AppointmentStatus;
-};
-
-/**
- * Una cita que bajó de Calendar y que todavía nadie del equipo miró.
- *
- * Va en la campana junto a las derivaciones porque las dos responden a la
- * misma pregunta —"¿pasó algo que tenga que atender?"—, pero no son lo mismo:
- * una derivación es alguien esperando una respuesta ahora, y una reserva es
- * algo que hay que preparar. Por eso conviven en la lista y no en el contador.
- */
-export type CitaNuevaRow = {
-  appointmentId: string;
-  contactId: string;
-  contactName: string;
-  title: string;
-  startTime: string;
-  /** Cuándo entró la reserva. Es lo que ordena la campana, no el turno. */
-  createdAt: string;
 };
 
 export type CrmData = {
@@ -211,7 +191,6 @@ export type CrmData = {
   handoffs: HandoffRow[];
   /** Chats con mensajes sin leer que no están derivados. También van a la campana. */
   chatsSinLeer: ChatSinLeerRow[];
-  citasNuevas: CitaNuevaRow[];
   /** Columnas del embudo, ya ordenadas. */
   pipelines: PipelineRow[];
   stages: StageRow[];
@@ -354,7 +333,6 @@ export async function getCrmData(
     conversationsResult,
     opportunitiesResult,
     appointmentsResult,
-    citasNuevasResult,
     messagesResult,
     stagesResult,
     pipelinesResult,
@@ -399,26 +377,13 @@ export async function getCrmData(
     supabase
       .from("appointments")
       .select(
-        "id, title, contact_id, origen, calendar_link, start_time, end_time, status, contacts!inner(name, archived_at)",
+        "id, title, contact_id, calendar_link, start_time, end_time, status, contacts!inner(name, archived_at)",
       )
       .eq("workspace_id", workspaceId)
       .is("contacts.archived_at", null)
       .gte("start_time", now.toISOString())
       .order("start_time", { ascending: true })
       .limit(25),
-    // Las que bajaron de Calendar y nadie miró todavía. Sólo las de Calendar:
-    // una cita cargada a mano en el CRM ya la vio quien la cargó.
-    supabase
-      .from("appointments")
-      .select("id, title, contact_id, start_time, created_at, contacts!inner(name, archived_at)")
-      .eq("workspace_id", workspaceId)
-      .eq("origen", "calendar")
-      .eq("vista", false)
-      .is("contacts.archived_at", null)
-      // Las últimas que entraron: si hay más de veinte sin ver, las que se
-      // quedan afuera tienen que ser las viejas, igual que en la campana.
-      .order("created_at", { ascending: false })
-      .limit(20),
     supabase
       .from("messages")
       .select("created_at, conversations!inner(workspace_id)")
@@ -606,15 +571,6 @@ export async function getCrmData(
     sinLeer: item.unreadCount,
   }));
 
-  const citasNuevas: CitaNuevaRow[] = (citasNuevasResult.data ?? []).map((row) => ({
-    appointmentId: row.id,
-    contactId: row.contact_id,
-    contactName: relatedName(row.contacts),
-    title: row.title,
-    startTime: row.start_time,
-    createdAt: row.created_at,
-  }));
-
   const pipelines: PipelineRow[] = (pipelinesResult.data ?? []).map((row) => ({
     id: row.id,
     name: row.name,
@@ -654,7 +610,6 @@ export async function getCrmData(
     title: row.title,
     contactId: row.contact_id,
     contactName: relatedName(row.contacts),
-    origen: row.origen ?? null,
     enlace: row.calendar_link ?? null,
     startTime: row.start_time,
     endTime: row.end_time,
@@ -776,7 +731,6 @@ export async function getCrmData(
     pendingContacts,
     handoffs,
     chatsSinLeer,
-    citasNuevas,
     pipelines,
     stages,
     opportunities,

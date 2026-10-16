@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { credenciales } from "@/lib/integraciones-server";
 import { normalizarTelefono, sePuedeEscribirPrimero } from "@/lib/telefono";
 import { proveedorDe, type Proveedor } from "@/lib/mensajeria";
 
@@ -62,9 +63,10 @@ export async function salidaParaEscribirPrimero(
     return { ok: true, provider, accountId };
   }
 
-  // Todavía no entró ningún mensaje: se cae al entorno, que es lo único que
-  // queda por consultar.
-  const ycloud = (process.env.YCLOUD_PHONE_NUMBER ?? "").trim();
+  // Todavía no entró ningún mensaje: queda el número de YCloud cargado en
+  // Conexiones (o en el entorno), que es lo único que falta consultar.
+  const conexion = await credenciales("ycloud", ["phone_number"]);
+  const ycloud = conexion.ok ? conexion.valores.phone_number.trim() : "";
   if (ycloud) return { ok: true, provider: "ycloud", accountId: ycloud };
 
   if (huboZernio) {

@@ -52,7 +52,9 @@ ellos, sólo que todavía no entran mensajes.
 ## Paso 3 · La key de OpenAI
 
 En [platform.openai.com/api-keys](https://platform.openai.com/api-keys) creá una
-API key y cargale saldo. Dejala a mano junto con las de Supabase.
+API key y cargale saldo. Dejala a mano: la vas a pegar en el CRM en el paso 6.
+Si todavía no la tenés, seguí igual: el CRM anda sin ella, sólo el agente no
+contesta.
 
 ## Paso 4 · Publicarlo (Vercel)
 
@@ -64,7 +66,9 @@ API key y cargale saldo. Dejala a mano junto con las de Supabase.
    | `NEXT_PUBLIC_SUPABASE_URL` | La Project URL de Supabase |
    | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | La anon public key |
    | `SUPABASE_SERVICE_ROLE_KEY` | La service_role key |
-   | `OPENAI_API_KEY` | La key de OpenAI |
+
+   Las claves de OpenAI, YCloud y Zernio **no** van acá: se cargan después,
+   desde el CRM.
 
 3. Tocá **Deploy** y esperá un par de minutos. Vercel te da una dirección del
    estilo `https://mi-crm.vercel.app`: ése es tu CRM.
@@ -77,7 +81,20 @@ API key y cargale saldo. Dejala a mano junto con las de Supabase.
    (Supabase → Authentication → Users). La primera vez que entra queda como
    administradora.
 
-## Paso 6 · Tu agente
+## Paso 6 · Conexiones (OpenAI, YCloud y Zernio)
+
+Las claves de los proveedores se cargan en el CRM, en **Configuración →
+Conexiones**. Se guardan cifradas y no se vuelven a mostrar.
+
+1. **Una sola vez:** la primera vez que entrás, la tarjeta te pide una variable
+   más en Vercel, `INTEGRATIONS_ENCRYPTION_KEY`, y te la muestra ya generada
+   para copiar. Es la llave con la que se cifran tus claves. Cargala en Vercel →
+   Settings → Environment Variables, y después Deployments → los tres puntos
+   del último → **Redeploy**. No la cambies nunca más.
+2. **OpenAI:** abrí la fila, pegá la key y tocá **Guardar**.
+3. **YCloud y Zernio:** se ven en el paso 8.
+
+## Paso 7 · Tu agente
 
 Las instrucciones de cada agente se escriben en el CRM, en **Agentes IA**: abrí
 el canal (WhatsApp, Instagram o Messenger) y completá el campo **Instrucciones**.
@@ -93,30 +110,31 @@ Mientras esté vacío, ese agente no contesta.
 En el mismo lugar elegís el modelo, la demora y el horario. Tocá **Guardar** y
 prendé el agente del canal.
 
-## Paso 7 · Conectar los canales
+## Paso 8 · Conectar los canales
 
-Para cada proveedor se configuran dos cosas: un **webhook** (por donde entran los
-mensajes) y las **variables** en Vercel. Después de cargar variables nuevas hay
-que volver a desplegar: Vercel → Deployments → los tres puntos del último →
-**Redeploy**.
+Se hace en el CRM, en **Configuración → Conexiones**, sin tocar Vercel. Cada
+conexión es una lista de pasos: abrí la fila y seguilos en orden.
 
 **YCloud (WhatsApp oficial)**
 
-1. En YCloud creá una API key → variable `YCLOUD_API_KEY`.
-2. Creá un webhook a `https://TU-DIRECCION/api/webhooks/ycloud` con el evento
+1. Pegá la API key de YCloud.
+2. La pantalla te da la dirección del webhook con un botón para copiarla. En
+   YCloud creá un webhook con esa dirección y el evento
    `whatsapp.inbound_message.received`.
-3. Copiá el secreto del webhook, entero con el `whsec_` adelante → variable
-   `YCLOUD_WEBHOOK_SECRET`.
+3. Copiá el secreto que te da YCloud, entero con el `whsec_` adelante, y pegalo.
+4. Tocá **Guardar**.
 
 **Zernio (Instagram, Messenger y WhatsApp)**
 
 1. Habilitá el addon de inbox en Zernio.
-2. Inventá un secreto largo al azar → variable `ZERNIO_WEBHOOK_SECRET`.
-3. Webhook a `https://TU-DIRECCION/api/webhooks/zernio?token=EL_SECRETO`.
-4. Tu API key de Zernio → variable `ZERNIO_API_KEY`.
+2. Pegá tu API key de Zernio.
+3. Tocá **Generar**: el CRM inventa el secreto por vos.
+4. Tocá **Guardar**.
+5. Copiá la dirección del webhook con el botón (ya trae el secreto adentro) y
+   pegala en Zernio → Settings → Webhooks, con el evento `message.received`.
 
 Para revisar que quedó bien, abrí `https://TU-DIRECCION/api/webhooks/ycloud` o
-`/api/webhooks/zernio` en el navegador: te dice qué variables faltan.
+`/api/webhooks/zernio` en el navegador: te dice qué falta.
 
 ## Opcional
 
@@ -126,11 +144,6 @@ Para revisar que quedó bien, abrí `https://TU-DIRECCION/api/webhooks/ycloud` o
 - **Avisos de tareas vencidas:** cargá `CRON_SECRET` (cualquier texto largo al
   azar) y programá un servicio como [cron-job.org](https://cron-job.org) para que
   llame cada 5 minutos a `https://TU-DIRECCION/api/cron/tareas?token=EL_SECRETO`.
-- **Citas de Google Calendar:** las citas pueden bajar solas de Google Calendar
-  usando [n8n](https://n8n.io) como puente. Cargá `CALENDAR_WEBHOOK_SECRET` y que
-  n8n mande cada alta, cambio o baja a `https://TU-DIRECCION/api/webhooks/calendar`
-  con ese secreto. Pedile a Claude que te explique qué datos espera ese webhook
-  (están documentados en `src/app/api/webhooks/calendar/route.ts`).
 
 ## Cambios posteriores
 

@@ -257,7 +257,7 @@ export function verificarFirmaYcloud(
     if (claves.some((clave) => coincide(conMarca.s, `${conMarca.t}.${rawBody}`, clave))) {
       return { ok: true };
     }
-    return { ok: false, motivo: "la firma no coincide con YCLOUD_WEBHOOK_SECRET" };
+    return { ok: false, motivo: "la firma no coincide con el secreto del webhook de YCloud" };
   }
 
   if (id && timestamp) {
@@ -267,7 +267,7 @@ export function verificarFirmaYcloud(
     if (claves.some((clave) => coincide(signature, `${id}.${timestamp}.${rawBody}`, clave))) {
       return { ok: true };
     }
-    return { ok: false, motivo: "la firma no coincide con YCLOUD_WEBHOOK_SECRET" };
+    return { ok: false, motivo: "la firma no coincide con el secreto del webhook de YCloud" };
   }
 
   if (claves.some((clave) => coincide(signature, rawBody, clave))) return { ok: true };

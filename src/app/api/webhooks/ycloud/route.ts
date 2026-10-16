@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { procesarEntrante } from "@/lib/entrante";
+import { credenciales, estaConfigurada } from "@/lib/integraciones-server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import {
   aMensajeEntrante,
@@ -52,14 +53,12 @@ const rejected = (
 };
 
 export async function POST(request: NextRequest) {
-  const secret = process.env.YCLOUD_WEBHOOK_SECRET;
-  if (!secret) {
-    console.error("[ycloud] falta YCLOUD_WEBHOOK_SECRET");
-    return NextResponse.json(
-      { error: "Falta la variable YCLOUD_WEBHOOK_SECRET en el entorno." },
-      { status: 500 },
-    );
+  const conexion = await credenciales("ycloud", ["webhook_secret"]);
+  if (!conexion.ok) {
+    console.error("[ycloud]", conexion.error);
+    return NextResponse.json({ error: conexion.error }, { status: 500 });
   }
+  const secret = conexion.valores.webhook_secret;
 
   // El cuerpo crudo es lo que se firma: no volver a serializarlo.
   const rawBody = await request.text();
@@ -121,17 +120,21 @@ export async function POST(request: NextRequest) {
 /**
  * Diagnóstico: abrir esta URL en el navegador dice qué falta configurar.
  *
+ * Cuenta tanto lo cargado en Configuración → Conexiones como las variables de
+ * entorno: es lo mismo que mira el webhook al recibir.
+ *
  * Del secreto se describe la forma, nunca el valor. Saber que existe no
  * alcanzaba: un secreto viejo, o pegado sin el prefijo `whsec_`, se veía
  * idéntico a uno correcto y daba un 401 imposible de explicar desde afuera.
  * El prefijo y el largo no permiten reconstruirlo.
  */
 export async function GET() {
+  const secreto = await credenciales("ycloud", ["webhook_secret"]);
   return NextResponse.json({
-    YCLOUD_WEBHOOK_SECRET: Boolean(process.env.YCLOUD_WEBHOOK_SECRET),
-    formato_del_secreto: describirSecreto(process.env.YCLOUD_WEBHOOK_SECRET),
-    YCLOUD_API_KEY: Boolean(process.env.YCLOUD_API_KEY),
-    OPENAI_API_KEY: Boolean(process.env.OPENAI_API_KEY),
+    secreto_del_webhook: secreto.ok,
+    formato_del_secreto: describirSecreto(secreto.ok ? secreto.valores.webhook_secret : undefined),
+    api_key_de_ycloud: await estaConfigurada("ycloud", ["api_key"]),
+    api_key_de_openai: await estaConfigurada("openai", ["api_key"]),
     SUPABASE_SERVICE_ROLE_KEY: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
   });
 }

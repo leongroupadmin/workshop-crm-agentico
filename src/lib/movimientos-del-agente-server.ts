@@ -54,8 +54,8 @@ export async function moverSiCorresponde(input: {
   try {
     const tarjeta = await tarjetaDelLead(input.supabase, input.workspaceId, input.contactId);
 
-    // Sin tarjeta no hay nada que mover. Es el caso del que reservó por Calendar
-    // y todavía no entró al embudo: se va antes de gastar en leer las reglas.
+    // Sin tarjeta no hay nada que mover. Es el caso del que todavía no entró al
+    // embudo: se va antes de gastar en leer las reglas.
     if (!tarjeta) return;
 
     const aplicables = await reglasParaClasificar(input.supabase, {

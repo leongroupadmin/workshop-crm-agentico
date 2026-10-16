@@ -51,7 +51,7 @@ export function describeError(status: number, detail: string, accountId?: string
 
   switch (status) {
     case 401:
-      return `Zernio rechazó la API key. Revisá ZERNIO_API_KEY. ${cita(motivo)}`.trim();
+      return `Zernio rechazó la API key. Revisala en Configuración → Conexiones. ${cita(motivo)}`.trim();
     case 403:
       // Meta solo deja responder dentro de las 24 horas del último mensaje del
       // contacto. Fuera de esa ventana no hay nada que arreglar en el CRM ni en
