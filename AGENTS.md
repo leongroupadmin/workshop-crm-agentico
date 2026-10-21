@@ -29,6 +29,9 @@ que te cuente o te pase una captura del error antes de seguir.
 - No hay roles: toda cuenta creada en Supabase entra como administradora. Por eso
   insistí en que deje **apagado** "Allow new users to sign up".
 - Siempre un proyecto de Supabase **nuevo**, nunca el de otra instalación.
+- Su copia del repo tiene que ser **privada** y hecha con **Use this template**
+  (no con Fork). La licencia (`LICENSE`) no permite publicarla, venderla ni
+  instalársela a otros.
 - Vercel se conecta desde su panel (Import Git Repository); no hace falta su CLI.
 
 ## Si te piden ayuda con las instrucciones del agente

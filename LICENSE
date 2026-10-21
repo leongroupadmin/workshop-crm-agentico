@@ -1,0 +1,66 @@
+LICENCIA DE USO — León CRM, versión workshop
+
+Copyright (c) 2026 León Group. Todos los derechos reservados.
+
+Este software (el código, el diseño, los textos, la documentación y las
+instrucciones de instalación de este repositorio, en adelante "el Software") es
+propiedad de León Group y está protegido por las leyes de propiedad intelectual.
+Que el repositorio sea público permite verlo, pero no da ningún derecho sobre el
+Software más allá de los que concede esta licencia.
+
+1. QUÉ PODÉS HACER
+
+León Group te da un permiso personal, gratuito, no exclusivo y que no podés
+transferir, para:
+
+  a) Hacer una copia del Software e instalarla en tus propias cuentas (por
+     ejemplo Supabase y Vercel).
+  b) Usarla para gestionar tu propio negocio o actividad, aunque esa actividad
+     sea con fines de lucro.
+  c) Modificarla y adaptarla para ese mismo uso.
+  d) Contratar a alguien para que te la instale, adapte o mantenga, siempre que
+     sea para tu propio uso y esa persona respete esta licencia.
+
+2. QUÉ NO PODÉS HACER
+
+Sin un permiso escrito de León Group, no podés:
+
+  a) Vender, alquilar, licenciar, sublicenciar, regalar ni distribuir de ninguna
+     forma el Software o una copia de él, con o sin modificaciones, ni ninguna
+     obra derivada.
+  b) Ofrecer el Software como servicio a terceros: instalárselo a clientes,
+     revenderlo como producto propio o cobrar por darles acceso (por ejemplo,
+     como un software por suscripción).
+  c) Presentar el Software, o una versión modificada, como si fuera creación
+     tuya o de otra persona, ni usarlo como base para un producto que compita
+     con los de León Group.
+  d) Quitar o cambiar este aviso de licencia ni los avisos de autoría de León
+     Group.
+  e) Publicar tu copia o el código en un lugar al que otras personas puedan
+     acceder. Tu copia del repositorio tiene que ser privada.
+  f) Usar el nombre o las marcas de León Group para promocionar productos o
+     servicios propios.
+
+3. LO QUE ES TUYO
+
+Los datos que cargues en tu instalación (contactos, conversaciones,
+instrucciones de los agentes y demás información) son tuyos. Esta licencia no le
+da a León Group ningún derecho sobre ellos.
+
+4. SIN GARANTÍAS
+
+El Software se entrega "tal como está", sin garantías de ningún tipo. León Group
+no responde por daños, pérdidas de datos, interrupciones del servicio ni costos
+que surjan de su uso, incluidos los de servicios de terceros como Supabase,
+Vercel, OpenAI, YCloud o Zernio, que corren por tu cuenta.
+
+5. FIN DEL PERMISO
+
+Si no cumplís esta licencia, el permiso termina automáticamente y tenés que
+dejar de usar el Software y borrar todas tus copias. León Group se reserva el
+derecho de iniciar las acciones legales que correspondan.
+
+6. CONSULTAS
+
+Para cualquier uso que no esté permitido acá (por ejemplo, revender el
+Software o instalárselo a clientes), consultá primero a León Group.
