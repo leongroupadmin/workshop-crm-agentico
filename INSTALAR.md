@@ -138,6 +138,53 @@ conexión es una lista de pasos: abrí la fila y seguilos en orden.
 Para revisar que quedó bien, abrí `https://TU-DIRECCION/api/webhooks/ycloud` o
 `/api/webhooks/zernio` en el navegador: te dice qué falta.
 
+## Paso 9 · Antes de usarlo con clientes reales
+
+El CRM es tuyo y lo manejás vos: tus cuentas, tus datos y tus gastos corren por
+tu cuenta (está en la [licencia](LICENSE)). Antes de abrirlo a clientes, revisá
+esta lista. Tildá cada punto recién cuando lo hayas comprobado.
+
+**Seguridad**
+
+- [ ] **Tu copia del repo es privada.** En GitHub, tu repo → **Settings** → abajo
+  de todo, **Change visibility**. Tiene que decir *Private*.
+- [ ] **Nadie se puede registrar solo.** En Supabase → **Authentication → Sign In
+  / Providers**, *Allow new users to sign up* tiene que estar **apagado**.
+- [ ] **Sólo tienen cuenta las personas que vos elegiste.** En Supabase →
+  **Authentication → Users**, borrá las que no reconozcas. Acordate de que toda
+  cuenta entra como administradora y ve todo.
+- [ ] **Tus claves no están en ningún lado más.** La service_role de Supabase y
+  las keys de OpenAI, YCloud y Zernio no se mandan por chat, mail ni WhatsApp.
+  Si alguna se compartió, generá una nueva y reemplazala.
+
+**Gastos**
+
+- [ ] **OpenAI tiene un límite.** En
+  [platform.openai.com](https://platform.openai.com), **Settings → Billing**:
+  dejá apagada la recarga automática (*auto recharge*) o ponele un tope. Así el
+  agente nunca gasta más de lo que cargaste.
+
+**Tus datos**
+
+- [ ] **Tenés una copia de seguridad.** En el CRM, **Base de datos → Descargar
+  la base**: bajá cada tabla y guardá los archivos. Repetilo cada tanto. Ojo: Supabase pausa los proyectos gratis que no se usan
+  por un tiempo.
+
+**El agente**
+
+- [ ] **Lo probaste con vos.** Escribile desde tu propio celular y hacele las
+  preguntas que te haría un cliente, incluidas las difíciles: precios,
+  descuentos, quejas. Si inventa algo o promete lo que no debe, corregí las
+  **Instrucciones** y volvé a probar.
+- [ ] **Vas a leer sus primeras charlas reales.** Los primeros días revisá en
+  **Conversaciones** qué contesta. La IA se puede equivocar y habla en nombre de
+  tu negocio.
+
+**WhatsApp e Instagram**
+
+- [ ] **Sólo le escribís a quien te escribió o aceptó tus mensajes.** Meta puede
+  bloquear un número que manda mensajes no pedidos.
+
 ## Opcional
 
 - **Avisos en el celular (push):** generá las claves con
