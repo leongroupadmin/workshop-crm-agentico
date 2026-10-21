@@ -33,6 +33,9 @@ que te cuente o te pase una captura del error antes de seguir.
   (no con Fork). La licencia (`LICENSE`) no permite publicarla, venderla ni
   instalársela a otros.
 - Vercel se conecta desde su panel (Import Git Repository); no hace falta su CLI.
+- No des la instalación por terminada sin recorrer con la persona la lista del
+  **Paso 9** (antes de usarlo con clientes reales), punto por punto, y pedile que
+  confirme cada uno.
 
 ## Si te piden ayuda con las instrucciones del agente
 
