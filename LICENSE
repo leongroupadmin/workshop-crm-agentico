@@ -41,26 +41,69 @@ Sin un permiso escrito de León Group, no podés:
   f) Usar el nombre o las marcas de León Group para promocionar productos o
      servicios propios.
 
-3. LO QUE ES TUYO
+3. ACEPTACIÓN
+
+Al copiar, instalar o usar el Software aceptás esta licencia. Si no estás de
+acuerdo, no lo uses.
+
+4. LO QUE ES TUYO
 
 Los datos que cargues en tu instalación (contactos, conversaciones,
-instrucciones de los agentes y demás información) son tuyos. Esta licencia no le
-da a León Group ningún derecho sobre ellos.
+instrucciones de los agentes y demás información) son tuyos y quedan guardados
+en tus propias cuentas. León Group no tiene acceso a ellos, no los trata ni los
+custodia, y esta licencia no le da ningún derecho sobre ellos.
 
-4. SIN GARANTÍAS
+5. TU RESPONSABILIDAD
 
-El Software se entrega "tal como está", sin garantías de ningún tipo. León Group
-no responde por daños, pérdidas de datos, interrupciones del servicio ni costos
-que surjan de su uso, incluidos los de servicios de terceros como Supabase,
-Vercel, OpenAI, YCloud o Zernio, que corren por tu cuenta.
+Tu instalación es tuya y la manejás vos. Por eso, sos el único responsable de:
 
-5. FIN DEL PERMISO
+  a) Tus cuentas, tus claves y su seguridad, y de los costos de los servicios
+     de terceros que uses (por ejemplo Supabase, Vercel, OpenAI, YCloud o
+     Zernio).
+  b) Cumplir las leyes que te correspondan, en especial las de protección de
+     datos personales, defensa del consumidor y comunicaciones comerciales:
+     tener el consentimiento de tus contactos, cuidar su información y no
+     mandar mensajes no deseados.
+  c) Cumplir las condiciones y políticas de los servicios de terceros, incluidas
+     las de Meta (WhatsApp, Instagram y Messenger). Si una de esas plataformas
+     suspende o bloquea tu cuenta o tu número, es entre vos y esa plataforma.
+  d) Lo que tus agentes de IA les dicen a tus contactos. Las respuestas generadas
+     por inteligencia artificial pueden tener errores: revisá las instrucciones
+     que les das y lo que contestan, porque hablan en nombre de tu negocio.
+  e) Hacer copias de seguridad de tus datos.
+  f) Los cambios que vos o quien contrates le hagan al Software.
+
+6. SIN GARANTÍAS
+
+El Software se entrega "tal como está", sin garantías de ningún tipo, ni
+expresas ni implícitas: León Group no garantiza que funcione sin errores, que
+sea seguro, que sirva para un fin en particular ni que vaya a recibir
+actualizaciones o soporte. El acompañamiento que se dé en el workshop es
+educativo y no constituye un servicio de soporte ni de mantenimiento.
+
+7. LÍMITE DE RESPONSABILIDAD
+
+En la máxima medida que permita la ley, León Group, sus integrantes y
+colaboradores no responden por ningún daño, directo o indirecto, que surja del
+uso o de la imposibilidad de usar el Software, incluidos la pérdida o filtración
+de datos, el lucro cesante, la pérdida de clientes, las interrupciones del
+servicio, los costos de terceros, las suspensiones o bloqueos de cuentas, las
+multas o sanciones y los reclamos de terceros.
+
+8. INDEMNIDAD
+
+Te comprometés a mantener indemne a León Group frente a cualquier reclamo,
+multa o gasto (incluidos los honorarios de abogados) que surja de tu uso del
+Software, de los datos que cargues, de lo que tus agentes de IA comuniquen o de
+que no cumplas esta licencia o las leyes que te correspondan.
+
+9. FIN DEL PERMISO
 
 Si no cumplís esta licencia, el permiso termina automáticamente y tenés que
 dejar de usar el Software y borrar todas tus copias. León Group se reserva el
 derecho de iniciar las acciones legales que correspondan.
 
-6. CONSULTAS
+10. CONSULTAS
 
 Para cualquier uso que no esté permitido acá (por ejemplo, revender el
 Software o instalárselo a clientes), consultá primero a León Group.
