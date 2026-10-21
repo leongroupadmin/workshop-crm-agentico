@@ -786,3 +786,7 @@ npm run lint    # eslint
 npm test        # pruebas
 npm run sql:instalar  # rearma supabase/instalar.sql con las migraciones
 ```
+
+## Licencia
+
+El código es de **León Group** y se usa bajo la [licencia de uso](LICENSE) de este repo. Cada persona puede instalarlo y adaptarlo para su propio negocio, pero no venderlo, distribuirlo, instalárselo a terceros ni presentarlo como propio. Las copias tienen que ser privadas.

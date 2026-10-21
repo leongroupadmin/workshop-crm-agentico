@@ -23,8 +23,10 @@ ellos, sólo que todavía no entran mensajes.
 ## Paso 1 · Tu copia del repo
 
 1. En la página de este repo en GitHub, tocá **Use this template → Create a new
-   repository**. Si no aparece ese botón, usá **Fork**.
-2. Ponele un nombre (por ejemplo `mi-crm`). Puede ser privado.
+   repository**. No uses **Fork**: un fork de este repo no se puede hacer privado.
+2. Ponele un nombre (por ejemplo `mi-crm`) y elegí **Private**. Tiene que ser
+   privado: la [licencia](LICENSE) te deja usar el CRM para tu negocio, pero no
+   publicarlo, venderlo ni instalárselo a otros.
 3. En [claude.ai/code](https://claude.ai/code), conectá tu cuenta de GitHub y
    abrí una sesión sobre **tu** repo nuevo.
 4. Escribile a Claude: **"quiero instalar el CRM"**.
